@@ -18,7 +18,7 @@ class TestSenderPeer(TestPeer):
 
     # NOTE: this is mockup code
     async def amplifier_test(self):
-        async for samples from amplifier:
+        async for samples in amplifier:
             await self.send_message(0, sig)
         while True:
             # TODO: how to integrate amplifier loop into PyZMQ asyncio loop
