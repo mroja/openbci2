@@ -1,0 +1,54 @@
+
+Message format:
+ 16 bits message type
+ 16 bits sender peer id
+ X bits message data
+
+Message type:
+ - codes from 0x0000 to 0x00FF are reserved by OpenBCI 2 Core for internal and predefined message types
+ - codes from 0x0100 to 0xFEFF can be used by user
+ - codes from 0xFF00 to 0xFFFF are legacy compatibility layer from OpenBCI 1
+
+Predefined message types:
+ 0 - None
+ 1 - Start
+ 2 - Stop
+ 3 - Kill
+
+ 4 - Signal
+ 5 - Video
+
+Sender peer ID:
+ - broker peer has ID = 0
+ - each peer receives unique ID from experiment controller
+
+Each peer negotiates message types with broker peer:
+ - REQ with type strings
+ - receives codes for theese types
+
+System messages:
+ - HELLO
+   - config
+ - REGISTER_MSG_TYPE
+   - id for msg_type
+ - READY
+   - ok
+ - HEARTBEAT
+   - ok or kill or start or stop?
+
+Connecting to broker protocol:
+ => send HELLO request with peer id and URLs list
+ <= receive config
+
+ => send REGISTER_MSG_TYPE
+ <= receive msg type IDs
+
+ => send READY
+ <= ok
+
+ => send HEARTBEAT
+ <= ok or kill or start or stop?
+
+
+Each peer connects to every other peer.
+
