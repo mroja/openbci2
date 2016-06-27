@@ -87,10 +87,7 @@ class BasicPeer:
                 self._listening_urls.append(real_url.decode())
 
         for url in self._peer_urls:
-            self._sub.connect(url)
-
-        # receive all messages by default
-        self._sub.setsockopt(zmq.SUBSCRIBE, b'')
+            self._sub.connect(url)        
         
         self._log_messages = False
         self._log_peers_info = True
@@ -112,6 +109,11 @@ class BasicPeer:
                 print(url)
             print('')
 
+    def set_filter(self, msg_filter):
+        self._sub.setsockopt(zmq.SUBSCRIBE, msg_filter)
+
+    def remove_filter(self, msg_filter):
+        self._sub.setsockopt(zmq.UNSUBSCRIBE, msg_filter)
 
     async def send_message(self, msg_type, data):
         if self._log_messages:

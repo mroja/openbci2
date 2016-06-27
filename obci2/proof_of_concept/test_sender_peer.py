@@ -39,10 +39,10 @@ class TestSenderPeer(TestPeer):
         self._messages_num = -1
 
     
-    async def send_test_messages(self):
+    async def send_test_messages(self, msg_type):
         n = 0
         while True:
-            await self.send_message(0, '{}'.format(n).encode('ascii'))
+            await self.send_message(msg_type, '{}'.format(n).encode('ascii'))
             n += 1
             if self._messages_num != -1 and n >= self._messages_num:
                 break
@@ -60,7 +60,10 @@ class TestSenderPeer(TestPeer):
 
     
     def run(self):
-        self._loop.create_task(self.send_test_messages())
+        self._loop.create_task(self.send_test_messages(1))
+        self._loop.create_task(self.send_test_messages(2))
+        self._loop.create_task(self.send_test_messages(3))
+        self._loop.create_task(self.send_test_messages(4))
         super().run()
 
 

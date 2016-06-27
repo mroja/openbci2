@@ -24,6 +24,7 @@ class Broker(BasicPeer):
                 print(url)
             print('')
 
+        self.set_filter(b'\x00')
 
     async def heartbeat_monitor(self):
         while True:

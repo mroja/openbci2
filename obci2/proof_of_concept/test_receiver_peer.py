@@ -16,6 +16,8 @@ class TestReceiverPeer(TestPeer):
         
         self._log_messages = False
 
+        self.set_filter(self._id.to_bytes(1, byteorder='little'))
+
     async def handle_message(self, msg_type, sending_peer, msg_data):
         await super().handle_message(msg_type, sending_peer, msg_data)
 
