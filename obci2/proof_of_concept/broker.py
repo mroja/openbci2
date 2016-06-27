@@ -5,10 +5,24 @@ import asyncio
 from peer import BasicPeer
 
 
+class PeerInfo:
+    def __init__(self, config=None):
+        self.ready = False
+        self.config = config
+        self.heartbeat = None
+        self.urls = []
+
+        self.next_command = None
+        
+
+
 class Broker(BasicPeer):
     def __init__(self, broker_bind_urls, **kwargs):
         kwargs['peer_id'] = 0
         super().__init__(**kwargs)
+        
+        self._peers = {}
+        self._msg_types = []
         
         self._log_messages = False
         
@@ -24,20 +38,44 @@ class Broker(BasicPeer):
                 print(url)
             print('')
 
-        self.set_filter(b'\x00')
+        #... self.set_filter(b'\x00')
 
     async def heartbeat_monitor(self):
         while True:
             all_ok = True
             now = time.time()
+            # TODO: fixme
             for peer_id, last_heartbeat_time in self._heartbeats:
                 if now - last_heartbeat_time > 1.0:
                     all_ok = False
                     break
 
 
-    async def handle_system_request(self, msg):
-        return b''
+    async def handle_system_request(self, sender_id, msg, params):
+        if sender_id not in self._peers:
+            return b'UNKNOWN_PEER_ID'
+            
+        peer = self._peers[sender_id]
+    
+        if msg == 'HEARTBEAT':
+            peer.heartbeat = time.time()
+            if peer.next_command is not None:
+                cmd = peer.next_command
+                peer.next_command = None
+                return cmd
+            else:
+                return b'OK'
+        elif msg == 'HELLO':
+            json.decode()
+            params.urls = []
+            return peer.config
+        elif msg == 'REGISTER_MSG_TYPE':
+            pass # send msg type id
+        elif msg == 'READY':
+            peer.ready = True
+            return b'OK'
+        else:
+            return b'INVALID_MESSAGE'
         
         
     async def recv_system_msg(self):
@@ -51,7 +89,13 @@ class Broker(BasicPeer):
             
             if self._broker in dict(events):
                 msg = await self._broker.recv_multipart()
-                response = await self.handle_system_request(msg)
+                if len(msg) > 1:
+                    response = await self.handle_system_request(
+                        int.from_bytes(msg[0], byteorder='little'), 
+                        msg[1],
+                        msg[2:] if len(msg) > 2 else None)
+                else:
+                    response = b'INVALID_MESSAGE'
                 await self._broker.send_multipart([response])
 
 

@@ -75,10 +75,13 @@ class BasicPeer:
         # SUB socket is subscribed to every other peer
         self._sub = self._ctx.socket(zmq.SUB)
 
-        self._pub.setsockopt(zmq.SNDHWM, HWM)
+        self._pub.set_hwm(HWM)
+        self._sub.set_hwm(HWM)
+        
+        #self._pub.setsockopt(zmq.SNDHWM, HWM)
         #self._pub.setsockopt(zmq.RCVHWM, HWM)
-        self._sub.setsockopt(zmq.SNDHWM, HWM)
-        self._sub.setsockopt(zmq.RCVHWM, HWM)
+        #self._sub.setsockopt(zmq.SNDHWM, HWM)
+        #self._sub.setsockopt(zmq.RCVHWM, HWM)
 
         for url in self._bind_urls:
             self._pub.bind(url)
@@ -110,10 +113,10 @@ class BasicPeer:
             print('')
 
     def set_filter(self, msg_filter):
-        self._sub.setsockopt(zmq.SUBSCRIBE, msg_filter)
+        self._sub.subscribe(msg_filter)
 
     def remove_filter(self, msg_filter):
-        self._sub.setsockopt(zmq.UNSUBSCRIBE, msg_filter)
+        self._sub.unsubscribe(msg_filter)
 
     async def send_message(self, msg_type, data):
         if self._log_messages:
