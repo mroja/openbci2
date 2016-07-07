@@ -68,7 +68,7 @@ class Message:
         return default_deserializer
 
     @staticmethod
-    def register_message_type(class_obj):
+    def register_type(class_obj):
         Message.types[class_obj.type_id] = class_obj
 
 __all__ = ['Message']

@@ -6,3 +6,6 @@ __pycache__/
 # py.test cache
 .cache/
 
+# setup.py
+*.egg-info/
+

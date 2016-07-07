@@ -3,6 +3,8 @@ import zmq
 import asyncio
 import threading
 
+from .peer import Peer
+
 
 BROKER_REP_INTERNAL_URL = 'inproc://broker_rep'
 BROKER_XPUB_INTERNAL_URL = 'inproc://broker_xpub'
@@ -65,7 +67,7 @@ class BrokerPeer(Peer):
 
 
 class Broker:
-    def __init__(self, rep_urls, xpub_urls, xsub_urls, , io_threads=1, hwm=1000):
+    def __init__(self, rep_urls, xpub_urls, xsub_urls, io_threads=1, hwm=1000):
         self._running = False
 
         self._rep_urls = rep_urls + [BROKER_REP_INTERNAL_URL]
@@ -145,10 +147,10 @@ class Broker:
 
     async def handle_system_request(self, sender_id, msg, params):
         if msg == 'HELLO':
-            if peer_id in self._peers:                
+            if peer_id in self._peers:
                 return b'PEER_ID_USED'
 
-            self._peers[peer_id] = 
+            # self._peers[peer_id] = 
         
             json.decode()
             params.urls = []

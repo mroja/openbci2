@@ -2,6 +2,14 @@
 
 Work in progress.
 
+To develop locally run "pip3 install -e ." inside openbci2 repository.
+
+To start tests run "py.test-3" inside openbci2/test repository.
+
+# Requirements
+
+apt install python3-venv
+
 # License
 
 OpenBCI is licensed under the terms of the GNU GPL version 3.

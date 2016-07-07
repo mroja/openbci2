@@ -1,4 +1,11 @@
 
+import time
+import random
+
+import pytest
+
+from obci2.core.peer import Peer
+from obci2.core.broker import Broker
 
 
 class TestBroker(Broker):
@@ -71,15 +78,10 @@ def test_connection_3():
 
 
     time.sleep(0.5)
-
-    import 
     
 
     
 def test_connection_4():
-    import time
-    import random
-
     broker_rep = 'tcp://127.0.0.1:20001'
     broker_xpub = 'tcp://127.0.0.1:20002'
     broker_xsub = 'tcp://127.0.0.1:20003'

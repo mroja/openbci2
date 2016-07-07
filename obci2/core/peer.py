@@ -2,6 +2,7 @@
 import time
 import asyncio
 import threading
+from collections import namedtuple
 
 import zmq
 
