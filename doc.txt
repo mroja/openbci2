@@ -24,15 +24,28 @@ Each peer negotiates message types with broker peer:
  - REQ with type strings
  - receives codes for theese types
 
+Broker receives logs by setting filter to LOGS msg type id.
+
+Peer receives two parametrs on command line: it's ID and broker URL.
+
 System messages:
- - HELLO
-   - config
- - REGISTER_MSG_TYPE
+ - HELLO: id [broker remembers time offset of this message]
+   - URLs to bind to -> eg. can contain 'tcp://*:*'
+ - REGISTER_PEER: list of real URLs 
    - id for msg_type
+ - HEARTBEAT - 50ms?
+   - OK or one of server messages:
+     - PEERS_LIST - peer connects to all peers on this list
+     - KILL - begin shutdown procedure
+     - START - start generators
+     - STOP - stop generators
+ - CONNECTED
+   - config -> start init
+ - REGISTER_MSG_TYPE
  - READY
    - ok
- - HEARTBEAT - 50ms?
-   - ok or kill or start or stop?
+ - BYEBYE - peer finished shutting down and will die, peer will not send or process anything after sending this message
+   - BYE
 
 First HEARTBEAT must be sent after HELLO.
 
