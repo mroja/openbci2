@@ -4,41 +4,46 @@ import random
 
 import pytest
 
-from obci2.core.peer import Peer
+from obci2.core.peer import Peer, PeerInitUrls
 from obci2.core.broker import Broker
 
 
 class TestBroker(Broker):
-    pass    
+    pass
 
 class TestPeer(Peer):
+    def __init__(self, peer_id, urls, **kwargs):
+        super().__init__(peer_id, urls, **kwargs)
+        self.init_finished = False
+        
+    async def initialization_finished(self):
+        await super().initialization_finished()
+        self.init_finished = True
+
+
+class SingleMessageSenderTestPeer(TestPeer):
     pass
 
-class SingleMessageSenderTestPeer(Peer):
-    pass
 
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(10)
 def run_connection_test(broker_rep, 
                         broker_xpub,
                         broker_xsub,
                         peer_pub,
                         peer_rep):
 
-    broker = TestBroker([rep_urls], [xpub_urls], [xsub_urls])
+    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
     
-    peer_info = PeerInfo()
-    peer_info.pub_urls = [peer_pub]
-    peer_info.rep_urls = [peer_rep]
-    
-    broker.add_peer(1, peer_info)
+    urls = PeerInitUrls(pub_urls=[peer_pub], 
+                        rep_urls=[peer_rep],
+                        broker_rep_url=broker_rep)    
+    peer = TestPeer(1, urls)
 
-    peer = TestPeer(1, broker_rep)
-    
-
-    assert()
-
-
-
+    while True:
+        if peer.init_finished and len(broker._peers.keys()) == 2:
+            break
+        time.sleep(0.1)
+        print('x')
 
 
 def test_connection_1():
@@ -63,8 +68,7 @@ def test_connection_2():
     run_connection_test(**params)
     
     
-    
-def test_connection_3():
+def _test_connection_3():
     peer_pub_urls = [
         'tcp://127.0.0.1:20000', 'tcp://127.0.0.1:20001',
         'tcp://127.0.0.1:20002', 'tcp://127.0.0.1:20003'
@@ -76,12 +80,10 @@ def test_connection_3():
     
     peer = Peer()
 
-
     time.sleep(0.5)
-    
 
-    
-def test_connection_4():
+
+def _test_connection_4():
     broker_rep = 'tcp://127.0.0.1:20001'
     broker_xpub = 'tcp://127.0.0.1:20002'
     broker_xsub = 'tcp://127.0.0.1:20003'
@@ -132,4 +134,8 @@ def test_connection_4():
 
     for peer in peers_senders:
         assert(peer.sent_messages_count == 1)
+        
+if __name__=='__main__':
+    #test_connection_1()
+    #test_connection_2()
 

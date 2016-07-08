@@ -1,9 +1,12 @@
 
-import zmq
 import asyncio
 import threading
 
-from .peer import Peer
+import zmq
+import zmq.asyncio
+
+from .messages import Message
+from .peer import Peer, PeerInitUrls
 
 
 BROKER_REP_INTERNAL_URL = 'inproc://broker_rep'
@@ -42,12 +45,12 @@ class MsgProxy:
 
     
     def _run(self):
-        self._ctx = zmq.Context(io_threads=io_threads)
+        self._ctx = zmq.Context(io_threads=self._io_threads)
         self._xpub = self._ctx.socket(zmq.XPUB)
         self._xsub = self._ctx.socket(zmq.XSUB)
 
-        self._xpub.set_hwm(hwm)
-        self._xsub.set_hwm(hwm)
+        self._xpub.set_hwm(self._hwm)
+        self._xsub.set_hwm(self._hwm)
 
         for url in self._xpub_urls:
             self._xpub.bind(url)
@@ -80,8 +83,12 @@ class Broker:
                                    io_threads=io_threads,
                                    hwm=hwm)
 
+        urls = PeerInitUrls(pub_urls=[BROKER_INTERNAL_PEER_PUB_URL], 
+                            rep_urls=[BROKER_INTERNAL_PEER_REP_URL],
+                            broker_rep_url=BROKER_REP_INTERNAL_URL)
+        
         self._peer = BrokerPeer(peer_id=0,
-                                broker_url=BROKER_REP_INTERNAL_URL,
+                                urls=urls,
                                 io_threads=io_threads,
                                 hwm=hwm)
 
@@ -93,7 +100,7 @@ class Broker:
         self._query_known_types = {}
         self._query_redirect_types = {}
 
-        self._log_messages = False
+        self._log_messages = True
 
         self._thread = threading.Thread(target=self._thread_func,
                                         args=(io_threads, hwm))
@@ -119,7 +126,7 @@ class Broker:
             for url in self._rep_urls:
                self._rep.bind(url)
             
-            self._loop.create_task(self._wait_for_peers())
+            self._loop.create_task(self._receive_and_handle_requests())
             self._running = True
             self._loop.run_forever()
         finally:
@@ -127,58 +134,53 @@ class Broker:
             self._loop.close()
 
 
-    async def heartbeat_monitor(self):
-        while True:
-            all_ok = True
-            now = time.time()
-            # TODO: fixme
-            for peer_id, last_heartbeat_time in self._heartbeats:
-                if now - last_heartbeat_time > 1.0:
-                    all_ok = False
-                    break
-
+    # TODO
     async def handle_query(self, query_msg):
-        if ...:
-            return 'RESPONSE:'
-        elif ...:
-            return 'REDIRECT_TO_PEER'
+        if 0:
+            return b'RESPONSE:'
+        elif 0:
+            return b'REDIRECT_TO_PEER'
         else:
-            return 'UNKNOWN'
+            return b'UNKNOWN'
 
-    async def handle_system_request(self, sender_id, msg, params):
-        if msg == 'HELLO':
-            if peer_id in self._peers:
-                return b'PEER_ID_USED'
 
-            # self._peers[peer_id] = 
-        
-            json.decode()
-            params.urls = []
-            return peer.config
-        elif msg == 'REGISTER_PEER':
-            pass # send msg type id
+    async def handle_request(self, msg):
+        if self._log_messages:
+            print('broker received message: {}'.format(msg.type))
+    
+        if msg.type == 'BROKER_HELLO':
+            if msg.subtype in self._peers:
+                return Message('INVALID_REQUEST', '0', 'Peer with such ID is already registered')
+
+            pi = PeerInfo()
+            self._peers[msg.subtype] = pi
+
+            return Message('BROKER_HELLO_RESPONSE', '0', {
+                'extra_pub_urls': [],
+                'extra_rep_urls': []
+            })
+        elif msg.type == 'BROKER_REGISTER_PEER':
+            if msg.subtype not in self._peers:
+                return Message('INVALID_REQUEST', '0', 'Say HELLO first!')
+
+            return Message('BROKER_REGISTER_PEER_RESPONSE', '0', {
+                'xpub_url': self._xpub_urls[0]
+            })
         else:
-            return b'INVALID_MESSAGE'
+            return Message('INVALID_REQUEST', '0', 'Unknown request type')
 
 
-    async def recv_system_msg(self):
+    async def _receive_and_handle_requests(self):
         poller = zmq.asyncio.Poller()
-        poller.register(self._broker, zmq.POLLIN)
+        poller.register(self._rep, zmq.POLLIN)
         while True:
-            events = await poller.poll(timeout=100)  # in milliseconds
-            
+            events = await poller.poll(timeout=50)  # in milliseconds
             if len(events) == 0 and not self._running:
                 break
-            
-            if self._broker in dict(events):
-                msg = await self._broker.recv_multipart()
-                if len(msg) > 1:
-                    response = await self.handle_system_request(
-                        int.from_bytes(msg[0], byteorder='little'), 
-                        msg[1],
-                        msg[2:] if len(msg) > 2 else None)
-                else:
-                    response = b'INVALID_MESSAGE'
-                await self._broker.send_multipart([response])
-
+            if self._rep in dict(events):
+                msg = await self._rep.recv_multipart()
+                print(msg)
+                msg = Message.deserialize(msg)
+                response = await self.handle_request(msg)
+                await self._rep.send_multipart(response.serialize())
 

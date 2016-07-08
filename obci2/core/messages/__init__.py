@@ -1,18 +1,52 @@
 
 import json
 
+class MessageSerializer:
+    @staticmethod
+    def serialize(data):
+        raise Exception('Must be reimplemented in subclass')
+
+    @staticmethod
+    def deserialize(data):
+        raise Exception('Must be reimplemented in subclass')
+
+class NullMessageSerializer:
+    @staticmethod
+    def serialize(data):
+        return b''
+
+    @staticmethod
+    def deserialize(data):
+        return b''
+
+
+class StringMessageSerializer(MessageSerializer):
+    @staticmethod
+    def serialize(data):
+        return data.encode('utf-8')
+
+    @staticmethod
+    def deserialize(data):
+        return data.decode('utf-8')
+
+
+class JsonMessageSerializer(MessageSerializer):
+    @staticmethod
+    def serialize(data):
+        return json.dumps(data, ensure_ascii=True, separators=(',', ':')).encode('ascii')
+
+    @staticmethod
+    def deserialize(data):
+        return json.loads(data.decode('ascii'))
+
 
 class Message:
-    type_id = None
-    types = {}
+    serializers = {}
 
-    def __init__(self, type_id, subtype_id='', data=b''):
+    def __init__(self, type_id, subtype_id='', data=None):
         self._type = type_id
         self.subtype = subtype_id
         self.data = data
-        if self._type in Message.types:
-            self.__class__ = Message.types[self._type].class_type
-            self.data = Message.get_data_deserializer(self.type)(data)
 
     # type is read only
     @property
@@ -22,7 +56,7 @@ class Message:
     def serialize(self):
         return [
             '{}^{}'.format(self.type, self.subtype).encode('utf-8'), 
-            Message.get_data_serializer(self.type)(data)
+            Message.serializers[self.type].serialize(self.data)
         ]
 
     @staticmethod
@@ -33,43 +67,34 @@ class Message:
             try:
                 type_id, subtype_id = msg[0].decode('utf-8').split('^', maxsplit=1)
             except Exception:
-                raise Exception('Invalid type or subtype')
-            data = msg[1]
+                raise Exception('Invalid message format: invalid type or subtype')
+            data = Message.serializers[type_id].deserialize(msg[1])
             return Message(type_id, subtype_id, data)
 
     @staticmethod
-    def serialize_data(data):
-        raise Exception('Must be reimplemented in subclass')
-    
-    @staticmethod
-    def deserialize_data(data):
-        raise Exception('Must be reimplemented in subclass')
+    def register_serializer(msg_type, serializer_class):
+        Message.serializers[msg_type] = serializer_class()
 
-    @staticmethod
-    def get_data_serializer(msg_type):
-        if msg_type in Message.types[msg_type]:
-            return Message.types[msg_type].serialize_data
-        def default_serializer(data):
-            if isinstance(data, bytes):
-                return data
-            else:
-                return json.dumps(data, ensure_ascii=True, separators=(',', ':')).encode('ascii')
-        return default_serializer 
 
-    @staticmethod
-    def get_data_deserializer(msg_type):
-        if msg_type in Message.types[msg_type]:
-            return Message.types[msg_type].deserialize_data
-        def default_deserializer(data):
-            try:
-                return json.loads(data.decode('ascii'))     
-            except json.JSONDecodeError:
-                return data
-        return default_deserializer
+#
+# serializers for predefined message types
+#
 
-    @staticmethod
-    def register_type(class_obj):
-        Message.types[class_obj.type_id] = class_obj
+Message.register_serializer('INVALID_REQUEST', StringMessageSerializer)
+Message.register_serializer('HEARTBEAT', NullMessageSerializer)
 
-__all__ = ['Message']
+#
+# broker messages
+#
 
+Message.register_serializer('BROKER_HELLO', JsonMessageSerializer)
+Message.register_serializer('BROKER_HELLO_RESPONSE', JsonMessageSerializer)
+
+Message.register_serializer('BROKER_REGISTER_PEER', JsonMessageSerializer)
+Message.register_serializer('BROKER_REGISTER_PEER_RESPONSE', JsonMessageSerializer)
+
+Message.register_serializer('BROKER_HEARTBEAT', JsonMessageSerializer)
+Message.register_serializer('BROKER_HEARTBEAT_RESPONSE', JsonMessageSerializer)
+
+Message.register_serializer('BROKER_QUERY', JsonMessageSerializer)
+Message.register_serializer('BROKER_QUERY_RESPONSE', JsonMessageSerializer)

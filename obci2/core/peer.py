@@ -6,7 +6,7 @@ from collections import namedtuple
 
 import zmq
 
-from .messages.broker import BrokerHelloMessage, BrokerRegisterPeerMessage
+from .messages import Message
 from .message_statistics import MsgPerfStats
 
 
@@ -52,7 +52,7 @@ class Peer:
         ###
         # logs verbosity
         ###
-        self._log_messages = False
+        self._log_messages = True
         self._log_peers_info = True
 
         ###
@@ -133,23 +133,25 @@ class Peer:
     
         # send hello to broker, receive extra URLs to bind PUB and REP sockets to
         response = await self.send_broker_message(
-            BrokerHelloMessage(self._id,
-                               self._pub_listening_urls,
-                               self._rep_listening_urls))
+            Message('BROKER_HELLO', str(self._id), {
+                'pub_urls': self._pub_listening_urls,
+                'rep_urls': self._rep_listening_urls
+            }))
 
-        self._pub_urls += response.data.extra_pub_urls
-        self._rep_urls += response.data.extra_rep_urls
+        self._pub_urls += response.data['extra_pub_urls']
+        self._rep_urls += response.data['extra_rep_urls']
 
-        self._pub_listening_urls += bind_to_urls(self._pub, response.data.extra_pub_urls)
-        self._rep_listening_urls += bind_to_urls(self._rep, response.data.extra_rep_urls)
+        self._pub_listening_urls += bind_to_urls(self._pub, response.data['extra_pub_urls'])
+        self._rep_listening_urls += bind_to_urls(self._rep, response.data['extra_rep_urls'])
 
         # after binding PUB and REP sockets send real URLs to the broker
         # and receive broker's XPUB port to connect SUB to
         response = await self.send_broker_message(
-            BrokerRegisterPeerMessage(self._id,
-                                      self._pub_listening_urls, 
-                                      self._rep_listening_urls))
-        self._broker_xpub_url = response.data.xpub_url
+            Message('BROKER_REGISTER_PEER', str(self._id), {
+                'pub_urls': self._pub_listening_urls,
+                'rep_urls': self._rep_listening_urls
+            }))
+        self._broker_xpub_url = response.data['xpub_url']
         self._sub.connect(self._broker_xpub_url)
 
         if self._log_peers_info:
@@ -182,10 +184,11 @@ class Peer:
 
 
     async def heartbeat(self):
+        hb_msg = Message('HEARTBEAT', self._id)
         while True:
             heartbeat_timestamp = time.time()
 
-            await self.send_message('HEARTBEAT')
+            await self.send_message(hb_msg)
             
             sleep_duration = self._heartbeat_delay - (time.time() - heartbeat_timestamp)
             if sleep_duration < 0:
@@ -197,9 +200,9 @@ class Peer:
 
 
     async def send_broker_message(self, msg):
-        msg = [self._id.to_bytes(2, byteorder='little')] + msg
-        await self._req.send_multipart(msg)
-        return await self._req.recv_multipart()
+        await self._req.send_multipart(msg.serialize())
+        response = await self._req.recv_multipart()
+        return Message.deserialize(response)
 
 
     async def send_message_to_peer(self, url, msg):
@@ -269,5 +272,3 @@ class Peer:
 
     async def _receive_async_messages(self):
         await self._receive_messages_helper(self._sub, self._receive_async_messages_handler)
-
-
