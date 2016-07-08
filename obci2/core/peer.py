@@ -6,9 +6,21 @@ from collections import namedtuple
 
 import zmq
 
+from ..utils.asyncio import Timeout
 from .messages import Message
 from .message_statistics import MsgPerfStats
 
+
+def print_threads():
+    import sys
+    import traceback
+    for th in threading.enumerate():
+        print(th)
+        traceback.print_stack(sys._current_frames()[th.ident])
+        print()
+    for task in asyncio.Task.all_tasks():
+        print(task)
+    print('xoxoxooxoxoxoxoxox')
 
 PeerInitUrls = namedtuple('PeerInitUrls', ['pub_urls', 'rep_urls', 'broker_rep_url'])
 
@@ -108,8 +120,18 @@ class Peer:
             self._running = True
             self._loop.run_forever()
         finally:
-            self._running = False
-            self._loop.close()
+            try:
+                print('MSG LOOP FINISHED')
+                print_threads()
+                self._running = False
+                tasks = asyncio.gather(*asyncio.Task.all_tasks())
+                tasks.cancel()
+                self._loop.run_until_complete(tasks)
+                #tasks.exception()
+                self._loop.close()
+                self._ctx.destroy()
+            except Exception:
+                pass
 
             
     async def _connect_to_broker(self):
@@ -136,7 +158,8 @@ class Peer:
             Message('BROKER_HELLO', str(self._id), {
                 'pub_urls': self._pub_listening_urls,
                 'rep_urls': self._rep_listening_urls
-            }))
+            })
+        )
 
         self._pub_urls += response.data['extra_pub_urls']
         self._rep_urls += response.data['extra_rep_urls']
@@ -195,13 +218,25 @@ class Peer:
                 sleep_duration = 0
             await asyncio.sleep(sleep_duration)
 
+            #print(self._running)
+            #print_threads()
             if not self._running:
                 break
 
 
     async def send_broker_message(self, msg):
         await self._req.send_multipart(msg.serialize())
-        response = await self._req.recv_multipart()
+        timeout = 1.0
+        start_time = time.time()
+        while True:
+            try:
+                response = await self._req.recv_multipart(zmq.NOBLOCK)
+                break
+            except zmq.error.Again:
+                if time.time() - start_time > timeout:
+                    raise Exception('send_broker_message: timeout')
+                await asyncio.sleep(0.01)
+                print('xoxo')
         return Message.deserialize(response)
 
 

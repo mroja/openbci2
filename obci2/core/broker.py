@@ -109,9 +109,11 @@ class Broker:
 
 
     def shutdown(self):
-        self._msg_proxy.shutdown()
-        self._peer.shutdown()
-        self._thread.join()
+        if self._running:
+            self._msg_proxy.shutdown()
+            self._peer.shutdown()
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join()
 
     def add_peer(self, peer_id, peer_info):
         self._peers[peer_id] = peer_info
@@ -132,6 +134,7 @@ class Broker:
         finally:
             self._running = False
             self._loop.close()
+            self._ctx.destroy()
 
 
     # TODO
