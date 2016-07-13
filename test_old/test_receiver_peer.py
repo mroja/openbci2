@@ -8,12 +8,12 @@ from test_peer import TestPeer
 class TestReceiverPeer(TestPeer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
+
         self._validate_data = True
         self._last_val = None
-        
+
         self._work_duration = 0.1
-        
+
         self._log_messages = False
 
         self.set_filter(self._id.to_bytes(1, byteorder='little'))
@@ -29,10 +29,10 @@ class TestReceiverPeer(TestPeer):
                     print('Transmission error ({} - {} = {}, should be 1)'
                           .format(val, self._last_val, x))
             self._last_val = val
-        
+
         # simulate some work
         if self._work_duration != -1:
-            time.sleep(self._work_duration) 
+            time.sleep(self._work_duration)
 
 
 if __name__ == '__main__':

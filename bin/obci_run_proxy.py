@@ -4,9 +4,9 @@
 #
 # OpenBCI is licensed under the terms of the GNU GPL version 3.
 #
-# This program is free software: you can redistribute it and/or 
-# modify it under the terms of the GNU General Public License as 
-# published by the Free Software Foundation, either version 3 of 
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 3 of
 # the License, or (at your option) any later version.
 #
 
@@ -35,17 +35,17 @@ def sanitize_module_name(name):
     digits = '0123456789'
     allowed_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_' + digits
     name = str(name)
-    
+
     name_filtered = ''
     for ch in name:
         if ch in allowed_chars:
             name_filtered += ch
     name = name_filtered
-    
+
     # name cannot start with a digit
     while len(name) > 0 and name[0] in digits:
         name = name[1:]
-    
+
     return name
 
 
@@ -125,4 +125,3 @@ if __name__ == '__main__':
         print('--- End of OpenBCI 2 Run Proxy Script Error ---')
         print('---------------------------------------------')
         sys.exit(1)
-

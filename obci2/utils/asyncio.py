@@ -1,6 +1,7 @@
 
 import asyncio
 
+
 class Timeout:
     """Timeout context manager.
     Useful in cases when you want to apply timeout logic around block
@@ -11,6 +12,7 @@ class Timeout:
     :param timeout: timeout value in seconds or None to disable timeout logic
     :param loop: asyncio compatible event loop
     """
+
     def __init__(self, timeout, *, loop=None):
         self._timeout = timeout
         if loop is None:
@@ -41,4 +43,3 @@ class Timeout:
 
     def _cancel_task(self):
         self._cancelled = self._task.cancel()
-

@@ -1,26 +1,34 @@
 
+import abc
 import json
 
-class MessageSerializer:
+
+class MessageSerializer(metaclass=abc.ABCMeta):
+
     @staticmethod
+    @abc.abstractmethod
     def serialize(data):
         raise Exception('Must be reimplemented in subclass')
 
     @staticmethod
+    @abc.abstractmethod
     def deserialize(data):
         raise Exception('Must be reimplemented in subclass')
 
-class NullMessageSerializer:
+
+class NullMessageSerializer(MessageSerializer):
+
     @staticmethod
     def serialize(data):
         return b''
 
     @staticmethod
     def deserialize(data):
-        return b''
+        return None
 
 
 class StringMessageSerializer(MessageSerializer):
+
     @staticmethod
     def serialize(data):
         return data.encode('utf-8')
@@ -31,6 +39,7 @@ class StringMessageSerializer(MessageSerializer):
 
 
 class JsonMessageSerializer(MessageSerializer):
+
     @staticmethod
     def serialize(data):
         return json.dumps(data, ensure_ascii=True, separators=(',', ':')).encode('ascii')
@@ -44,8 +53,8 @@ class Message:
     serializers = {}
 
     def __init__(self, type_id, subtype_id='', data=None):
-        self._type = type_id
-        self.subtype = subtype_id
+        self._type = str(type_id)
+        self.subtype = str(subtype_id)
         self.data = data
 
     # type is read only
@@ -55,7 +64,7 @@ class Message:
 
     def serialize(self):
         return [
-            '{}^{}'.format(self.type, self.subtype).encode('utf-8'), 
+            '{}^{}'.format(self.type, self.subtype).encode('utf-8'),
             Message.serializers[self.type].serialize(self.data)
         ]
 
@@ -82,6 +91,9 @@ class Message:
 
 Message.register_serializer('INVALID_REQUEST', StringMessageSerializer)
 Message.register_serializer('HEARTBEAT', NullMessageSerializer)
+
+Message.register_serializer('PEERS_READY', NullMessageSerializer)
+Message.register_serializer('PEERS_READY_RECEIVED', NullMessageSerializer)
 
 #
 # broker messages

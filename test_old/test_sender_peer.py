@@ -28,7 +28,7 @@ class DummySignalSource:
 
     async def fetch_data(self):
         await asyncio.sleep(1.0 / (self._sampling_rate / self._samples_per_message))
-        return np.random.rand(self._channels, 
+        return np.random.rand(self._channels,
                               self._samples_per_message).astype(self._dtype)
 
 
@@ -38,7 +38,7 @@ class TestSenderPeer(TestPeer):
         self._rate = -1
         self._messages_num = -1
 
-    
+
     async def send_test_messages(self, msg_type):
         n = 0
         while True:
@@ -49,7 +49,7 @@ class TestSenderPeer(TestPeer):
             if self._rate != -1:
                 await asyncio.sleep(1.0 / self._rate)
 
-    
+
     async def amplifier_test(self):
         async for samples in amplifier:
             await self.send_message(0, sig)
@@ -58,7 +58,7 @@ class TestSenderPeer(TestPeer):
             sig = await getSamplesFromAmplifier()
             await self.send_message(0, sig)
 
-    
+
     def run(self):
         self._loop.create_task(self.send_test_messages(1))
         self._loop.create_task(self.send_test_messages(2))
@@ -70,4 +70,3 @@ class TestSenderPeer(TestPeer):
 if __name__ == '__main__':
     peer = TestSenderPeer()
     peer.run()
-

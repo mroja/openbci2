@@ -25,7 +25,7 @@ _LEGACY_MSG_TYPES_LIST = [
         'name': "MAX_MULTIPLEXER_META_PACKET",
         'comment': "this only defines a constant"
     },
-    
+
     # PACKAGES 100 - 999 normal package
     # types 100-109 reserved
     {
@@ -179,60 +179,60 @@ _LEGACY_MSG_TYPES_LIST = [
 
     ################# CONFIGURATION MESSAGES ############################
     {
-        # TODO get rid of this type    
+        # TODO get rid of this type
         'type': 213,
         'name': "CONFIG_MESSAGE"
     }, {
         # message contains ConfigParamsRequest message
         'type': 214,
-    	'name': "GET_CONFIG_PARAMS"        
+        'name': "GET_CONFIG_PARAMS"
     }, {
         # message contains ConfigParams message
-    	'type': 215,
-	    'name': "CONFIG_PARAMS"
+        'type': 215,
+        'name': "CONFIG_PARAMS"
     }, {
         # message contains ConfigParams message
-    	'type': 216,
-	    'name': "REGISTER_PEER_CONFIG"
+        'type': 216,
+        'name': "REGISTER_PEER_CONFIG"
     }, {
         # message contains peer_id (string)
-	    'type': 217,
-	    'name': "PEER_REGISTERED"
+        'type': 217,
+        'name': "PEER_REGISTERED"
     }, {
         # message contains ConfigParams message
-    	'type': 218,
-	    'name': "UPDATE_PARAMS"
+        'type': 218,
+        'name': "UPDATE_PARAMS"
     }, {
         # message contains ConfigParams message
-	    'type': 219,
-	    'name': "PARAMS_CHANGED"
+        'type': 219,
+        'name': "PARAMS_CHANGED"
     }, {
         # message contains peer_id (string)
-	    'type': 220,
-	    'name': "PEER_READY"
+        'type': 220,
+        'name': "PEER_READY"
     }, {
         # PeerReadyQuery
-	    'type': 221,
-	    'name': "PEERS_READY_QUERY"
+        'type': 221,
+        'name': "PEERS_READY_QUERY"
     }, {
         # PeerReadyStatus
-	    'type': 222,
-	    'name': "READY_STATUS"
+        'type': 222,
+        'name': "READY_STATUS"
     }, {
         # message contains PeerIdentity
-	    'type': 223,
-	    'name': "UNREGISTER_PEER_CONFIG"
+        'type': 223,
+        'name': "UNREGISTER_PEER_CONFIG"
     }, {
-        #ConfigError
-	    'type': 224,
-	    'name': "CONFIG_ERROR"
+        # ConfigError
+        'type': 224,
+        'name': "CONFIG_ERROR"
     }, {
         # PeerIdentity
-	    'type': 225,
-	    'name': "PEER_READY_SIGNAL"
+        'type': 225,
+        'name': "PEER_READY_SIGNAL"
     }, {
-	    'type': 226,
-	    'name': "SHUTDOWN_REQUEST"
+        'type': 226,
+        'name': "SHUTDOWN_REQUEST"
     }, {
         # cfg_templates.LauncherCommand
         'type': 227,
@@ -297,15 +297,13 @@ _LEGACY_MSG_TYPES_LIST = [
 
 LEGACY_MSG_TYPES = {}
 for t in _LEGACY_MSG_TYPES_LIST:
-    # legacy messages have code in 0xFFXX format, 
+    # legacy messages have code in 0xFFXX format,
     # where XX is the original code from OpenBCI 1
     code = 0xFF00 | t['type']
     LEGACY_MSG_TYPES[code] = 'LEGACY_' + t['name']
 
 
 def print_legacy_msg_types():
-    keys = list(LEGACY_MSG_TYPES.keys())
-    keys.sort()
+    keys = sorted(LEGACY_MSG_TYPES.keys())
     for k in keys:
         print('{} = {}'.format(k, LEGACY_MSG_TYPES[k]))
-
