@@ -126,7 +126,7 @@ class Broker:
 
         self._peers = {}
 
-        self._query_known_types = {}
+        self._query_types = {}
         self._query_redirect_types = {}
 
         self._log_messages = True
@@ -229,6 +229,24 @@ class Broker:
                 'xpub_url': self._xpub_urls[0],
                 'xsub_url': self._xsub_urls[0]
             })
+        elif msg.type == 'BROKER_QUERY':
+            query_type = msg.data['type']
+            if query_type in self._query_types:
+                response = {
+                    'type': 'response',
+                    'data': self._query_types[query_type]
+                }
+            elif query_type in self._query_redirect_types:
+                response = {
+                    'type': 'redirect',
+                    'data': self._query_redirect_types[query_type]
+                }
+            else:
+                response = {
+                    'type': 'unknown',
+                    'data': ''
+                }
+            return Message('BROKER_QUERY_RESPONSE', '0', response)
         else:
             return Message('INVALID_REQUEST', '0', 'Unknown request type')
 
