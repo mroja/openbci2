@@ -10,6 +10,7 @@ Message.register_serializer('NULL', NullMessageSerializer)
 Message.register_serializer('STRING', StringMessageSerializer)
 Message.register_serializer('JSON', JsonMessageSerializer)
 
+
 def check_round_trip(msg_type, subtype, payload):
     msg = Message(msg_type, subtype, payload)
     assert isinstance(msg.type, str)
@@ -20,14 +21,15 @@ def check_round_trip(msg_type, subtype, payload):
     assert msg_deserialized.type == msg.type
     assert msg_deserialized.subtype == msg.subtype
     if (msg.data is None
-        or isinstance(msg.data, bytes)
-        or isinstance(msg.data, str)
-        or isinstance(msg.data, dict)
-       ):
+            or isinstance(msg.data, bytes)
+            or isinstance(msg.data, str)
+            or isinstance(msg.data, dict)
+            ):
         assert msg_deserialized.data == msg.data
     else:
         raise Exception("don't know how to compare playloads for equality")
     return True
+
 
 def test_1():
     msg = Message('STRING', 123, 'abc')
@@ -38,6 +40,7 @@ def test_1():
     assert msg.subtype == '321'
     msg.data = 'cba'
     assert msg.data == 'cba'
+
 
 def test_2():
     unicode_1 = 'ą, ć, ę, ł, ń, ó, ś, ź, ż, Ą, Ć, Ę, Ł, Ń, Ó, Ś, Ź, Ż'
@@ -63,7 +66,7 @@ def test_2():
         'array_1': [1, 2, 3, 4],
         'array_1a': ['1', '2', '3', '4'],
         'array_2': [1.5, 2.5, 3.5, 4.5],
-        'array_3': [{'a':'a'}, {'b':'b'}],
+        'array_3': [{'a': 'a'}, {'b': 'b'}],
         'unicode_1': unicode_1,
         'unicode_2': unicode_2,
         'unicode_3': unicode_3
@@ -71,6 +74,6 @@ def test_2():
     assert check_round_trip('JSON', 0, json)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     test_1()
     test_2()

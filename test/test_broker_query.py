@@ -116,6 +116,7 @@ def test_query_1():
     run_connection_test(**params)
     print('test_1 finished')
 
+
 def test_query_2():
     params = {
         'broker_rep': 'tcp://127.0.0.1:20001',
@@ -128,6 +129,6 @@ def test_query_2():
     print('test_2 finished')
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     test_1()
     test_2()

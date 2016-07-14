@@ -187,7 +187,7 @@ class Peer:
         self._pub_listening_urls = bind_to_urls(self._pub, self._pub_urls)
         self._rep_listening_urls = bind_to_urls(self._rep, self._rep_urls)
 
-        #self._pub.connect(self._broker_xpub_url)
+        # self._pub.connect(self._broker_xpub_url)
 
         if self._log_peers_info:
             msg = ("\n"
@@ -241,7 +241,7 @@ class Peer:
         self._broker_xsub_url = response.data['xsub_url']
         self._sub.connect(self._broker_xpub_url)
         self._pub.connect(self._broker_xsub_url)
-        #self._sub.subscribe(b'')
+        # self._sub.subscribe(b'')
 
         if self._log_peers_info:
             msg = ("\n"
@@ -301,9 +301,9 @@ class Peer:
     async def send_message(self, msg):
         if self._log_messages:
             self._logger.debug("peer '{}': sending: type '{}', subtype '{}'"
-                  .format(self._id,
-                          msg.type,
-                          msg.subtype))
+                               .format(self._id,
+                                       msg.type,
+                                       msg.subtype))
         serialized_msg = msg.serialize()
         if self._calc_send_stats:
             self._send_stats.msg(serialized_msg)
@@ -314,7 +314,7 @@ class Peer:
             'BROKER_QUERY', self._id, {
                 'type': query_type,
                 'params': query_params
-        })
+            })
 
         broker_response = await self.send_broker_message(query_msg)
 
@@ -343,17 +343,17 @@ class Peer:
     async def handle_sync_message(self, msg):
         if self._log_messages:
             self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
-                  .format(self._id,
-                          msg.type,
-                          msg.subtype))
+                               .format(self._id,
+                                       msg.type,
+                                       msg.subtype))
         return Message('INVALID_REQUEST', self._id, 'Handler not implemented')
 
     async def handle_async_message(self, msg):
         if self._log_messages:
             self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
-                  .format(self._id,
-                          msg.type,
-                          msg.subtype))
+                               .format(self._id,
+                                       msg.type,
+                                       msg.subtype))
 
     async def _receive_sync_messages_handler(self):
         msg = await self._rep.recv_multipart()

@@ -120,7 +120,7 @@ if __name__ == '__main__':
         print('')
         print('Import path:')
         for i, p in enumerate(sys.path):
-            print('{:2d}. {:s}'.format(i+1, p))
+            print('{:2d}. {:s}'.format(i + 1, p))
         print('---------------------------------------------')
         print('--- End of OpenBCI 2 Run Proxy Script Error ---')
         print('---------------------------------------------')

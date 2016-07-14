@@ -78,8 +78,8 @@ class MsgProxy:
         self._xsub_listening_urls = bind_to_urls(self._xsub, self._xsub_urls)
 
         self._logger.info("\nMsgProxy: XPUB: {}\nMsgProxy: XSUB: {}\n"
-                    .format(', '.join(self._xpub_listening_urls),
-                            ', '.join(self._xsub_listening_urls)))
+                          .format(', '.join(self._xpub_listening_urls),
+                                  ', '.join(self._xsub_listening_urls)))
 
         try:
             if self._debug:

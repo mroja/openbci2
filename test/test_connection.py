@@ -16,6 +16,7 @@ class TestBroker(Broker):
 
 
 class TestPeer(Peer):
+
     def __init__(self, peer_id, urls, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
         self.init_finished = False
@@ -26,6 +27,7 @@ class TestPeer(Peer):
 
 
 class TestPeerWithMsgHistory(TestPeer):
+
     def __init__(self, peer_id, urls, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
         self.received_sync_messages = []
@@ -45,6 +47,7 @@ class TestPeerWithMsgHistory(TestPeer):
 
 
 class SingleMessageSenderTestPeer(TestPeer):
+
     def __init__(self, peer_id, urls, msg_to_send, messages_count=1, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
         self.msg_to_send = msg_to_send
@@ -64,6 +67,7 @@ class SingleMessageSenderTestPeer(TestPeer):
 
 
 class SingleMessageReceiverTestPeer(TestPeer):
+
     def __init__(self, peer_id, urls, msg_to_receive, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
         self.msg_to_receive = msg_to_receive
@@ -119,6 +123,7 @@ def test_connection_1():
     run_connection_test(**params)
     print('test_1 finished')
 
+
 def test_connection_2():
     params = {
         'broker_rep': 'tcp://127.0.0.1:20001',
@@ -129,6 +134,7 @@ def test_connection_2():
     }
     run_connection_test(**params)
     print('test_2 finished')
+
 
 def test_connection_3():
     broker_rep = 'tcp://127.0.0.1:20001'
@@ -216,8 +222,8 @@ def test_connection_4():
     peer_pub = 'tcp://127.0.0.1:*'
     peer_rep = 'tcp://127.0.0.1:*'
 
-    A_msgs_count = 2 #25
-    B_msgs_count = 2 #25
+    A_msgs_count = 2  # 25
+    B_msgs_count = 2  # 25
 
     broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub], 2 * (A_msgs_count + B_msgs_count))
 
@@ -271,16 +277,16 @@ def test_connection_4():
         assert(peer.sent_messages_count == 1)
 
     for peer in peers_receive_A:
-        #print(peer.received_messages_count)
+        # print(peer.received_messages_count)
         assert(peer.received_messages_count == A_msgs_count)
 
     for peer in peers_receive_B:
-        #print(peer.received_messages_count)
+        # print(peer.received_messages_count)
         assert(peer.received_messages_count == B_msgs_count)
 
     print('test_4 finished')
 
-if __name__=='__main__':
+if __name__ == '__main__':
     test_connection_1()
     test_connection_2()
     test_connection_3()
