@@ -3,6 +3,7 @@ import time
 import asyncio
 import traceback
 import threading
+import logging
 from collections import namedtuple
 
 import zmq
@@ -74,6 +75,7 @@ class Peer:
         ###
         self._log_messages = True
         self._log_peers_info = True
+        self._logger = logging.getLogger('Peer{}'.format(self._id))
 
         ###
         # message statistics
@@ -139,11 +141,11 @@ class Peer:
             self._running = True
             self._loop.run_forever()
         except Exception as ex:
-            print(ex)
+            self._logger.error(ex)
         finally:
             try:
                 self._running = False
-                print("Peer '{}' message loop finished".format(self._id))
+                self._logger.info("Peer '{}' message loop finished".format(self._id))
 
                 tasks = asyncio.gather(*asyncio.Task.all_tasks())
                 tasks.cancel()
@@ -165,18 +167,18 @@ class Peer:
                 self._loop.close()
                 if self._destroy_context:
                     self._ctx.destroy()
-                    print("Peer '{}': context destroyed".format(self._id))
+                    self._logger.info("Peer '{}': context destroyed".format(self._id))
 
-                print("Peer '{}': thread finished".format(self._id))
+                self._logger.info("Peer '{}': thread finished".format(self._id))
             except Exception as ex:
-                print('final error: {}'.format(ex))
+                self._logger.error('final error: {}'.format(ex))
 
     async def _connect_to_broker_wrapper(self):
         try:
             await self._connect_to_broker()
         except Exception as ex:
-            print("Peer '{}': init failed: {}: {}".format(self._id, type(ex), ex))
-            print(traceback.format_exc())
+            self._logger.error("Peer '{}': init failed: {}: {}".format(self._id, type(ex), ex))
+            self._logger.error(traceback.format_exc())
         else:
             self._loop.create_task(self.heartbeat())
             self._loop.create_task(self.initialization_finished())
@@ -195,14 +197,14 @@ class Peer:
                    "\n").format(self._id,
                                 ', '.join(self._pub_listening_urls),
                                 ', '.join(self._rep_listening_urls))
-            print(msg)
+            self._logger.debug(msg)
 
         # TODO: implement self._ip_autodiscovery = True
         if self._ip_autodiscovery:
             raise Exception('self._ip_autodiscovery = True not implemented')
         else:
             self._req.connect(self._broker_rep_url)
-            print("Peer '{}': Connected to Broker's REP: {}".format(self._id, self._broker_rep_url))
+            self._logger.debug("Peer '{}': Connected to Broker's REP: {}".format(self._id, self._broker_rep_url))
 
         # send hello to broker, receive extra URLs to bind PUB and REP sockets to
         response = await self.send_broker_message(
@@ -226,7 +228,7 @@ class Peer:
                    "\n").format(self._id,
                                 ', '.join(self._pub_listening_urls),
                                 ', '.join(self._rep_listening_urls))
-            print(msg)
+            self._logger.debug(msg)
 
         # after binding PUB and REP sockets send real URLs to the broker
         # and receive broker's XPUB port to connect SUB to
@@ -252,7 +254,7 @@ class Peer:
                                 self._broker_xpub_url,
                                 ', '.join(self._pub_listening_urls),
                                 ', '.join(self._rep_listening_urls))
-            print(msg)
+            self._logger.info(msg)
 
     async def initialization_finished(self):
         self._loop.create_task(self._receive_sync_messages())
@@ -280,8 +282,6 @@ class Peer:
                 sleep_duration = 0
             await asyncio.sleep(sleep_duration)
 
-            # print(self._running)
-            # print_threads()
             if not self._running:
                 break
 
@@ -300,7 +300,7 @@ class Peer:
 
     async def send_message(self, msg):
         if self._log_messages:
-            print("peer '{}': sending: type '{}', subtype '{}'"
+            self._logger.debug("peer '{}': sending: type '{}', subtype '{}'"
                   .format(self._id,
                           msg.type,
                           msg.subtype))
@@ -342,7 +342,7 @@ class Peer:
 
     async def handle_sync_message(self, msg):
         if self._log_messages:
-            print("peer '{}', received: type '{}', subtype: '{}'"
+            self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
                   .format(self._id,
                           msg.type,
                           msg.subtype))
@@ -350,7 +350,7 @@ class Peer:
 
     async def handle_async_message(self, msg):
         if self._log_messages:
-            print("peer '{}', received: type '{}', subtype: '{}'"
+            self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
                   .format(self._id,
                           msg.type,
                           msg.subtype))

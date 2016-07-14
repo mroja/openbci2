@@ -1,5 +1,6 @@
 
 import asyncio
+import logging
 import threading
 
 import zmq
@@ -37,13 +38,18 @@ class MsgProxy:
         else:
             self._destroy_context = False
             self._ctx = zmq_context
+
         self._xpub_urls = xpub_urls
         self._xsub_urls = xsub_urls
         self._xpub_listening_urls = []
         self._xsub_listening_urls = []
         self._io_threads = io_threads
         self._hwm = hwm
+
         self._debug = False
+
+        self._logger = logging.getLogger('MsgProxy')
+
         self._thread = threading.Thread(target=self._run, name='MsgProxy')
         self._thread.daemon = True  # TODO: True or False?
         self._thread.start()
@@ -71,9 +77,9 @@ class MsgProxy:
         self._xpub_listening_urls = bind_to_urls(self._xpub, self._xpub_urls)
         self._xsub_listening_urls = bind_to_urls(self._xsub, self._xsub_urls)
 
-        print("\nMsgProxy: XPUB: {}\nMsgProxy: XSUB: {}\n"
-              .format(', '.join(self._xpub_listening_urls),
-                      ', '.join(self._xsub_listening_urls)))
+        self._logger.info("\nMsgProxy: XPUB: {}\nMsgProxy: XSUB: {}\n"
+                    .format(', '.join(self._xpub_listening_urls),
+                            ', '.join(self._xsub_listening_urls)))
 
         try:
             if self._debug:
@@ -84,11 +90,11 @@ class MsgProxy:
                     events = dict(poller.poll(1000))
                     if self._xpub in events:
                         message = self._xpub.recv_multipart()
-                        print("[BROKER_PROXY] subscription message: {}".format(message))
+                        self._logger.debug("[BROKER_PROXY] subscription message: {}".format(message))
                         self._xsub.send_multipart(message)
                     if self._xsub in events:
                         message = self._xsub.recv_multipart()
-                        print("[BROKER_PROXY] publishing message: {}".format(message))
+                        self._logger.debug("[BROKER_PROXY] publishing message: {}".format(message))
                         self._xpub.send_multipart(message)
             else:
                 zmq.proxy(self._xsub, self._xpub)
@@ -131,6 +137,7 @@ class Broker:
         self._query_redirect_types = {}
 
         self._log_messages = True
+        self._logger = logging.getLogger('Broker')
 
         self._thread = threading.Thread(target=self._thread_func,
                                         args=(io_threads, hwm),
@@ -161,7 +168,7 @@ class Broker:
 
             self._rep_listening_urls = bind_to_urls(self._rep, self._rep_urls)
 
-            print("Broker: REP: {}".format(', '.join(self._rep_listening_urls)))
+            self._logger.info("Broker: REP: {}".format(', '.join(self._rep_listening_urls)))
 
             self._start_internal_peer()
 
@@ -169,10 +176,10 @@ class Broker:
             self._running = True
             self._loop.run_forever()
         except Exception as ex:
-            print(ex)
+            self._logger.error(ex)
         finally:
             self._running = False
-            print("Broker message loop finished")
+            self._logger.info("Broker message loop finished")
 
             tasks = asyncio.gather(*asyncio.Task.all_tasks())
             tasks.cancel()
@@ -187,7 +194,7 @@ class Broker:
 
             self._loop.close()
             self._ctx.destroy()
-            print("Broker context destroyed")
+            self._logger.info("Broker context destroyed")
 
     def _start_internal_peer(self):
         urls = PeerInitUrls(pub_urls=[BROKER_INTERNAL_PEER_PUB_URL],
@@ -201,7 +208,7 @@ class Broker:
 
     async def handle_request(self, msg):
         if self._log_messages:
-            print('broker received message {} from {}'.format(msg.type, msg.subtype))
+            self._logger.debug('broker received message {} from {}'.format(msg.type, msg.subtype))
 
         if msg.type == 'BROKER_HELLO':
             if msg.subtype in self._peers:
