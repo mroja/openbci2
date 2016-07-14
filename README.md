@@ -4,11 +4,11 @@ Work in progress.
 
 To develop locally run "pip3 install -e ." inside openbci2 repository.
 
-To start tests run "py.test-3" inside openbci2/test repository.
+To start tests run "py.test-3 -s" inside "openbci2/test" repository.
 
 # Requirements
 
-apt install python3-venv
+    sudo apt install python3-venv python3-pytest python3-pytest-timeout
 
 # License
 
