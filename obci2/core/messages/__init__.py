@@ -54,13 +54,21 @@ class Message:
 
     def __init__(self, type_id, subtype_id='', data=None):
         self._type = str(type_id)
-        self.subtype = str(subtype_id)
+        self._subtype = str(subtype_id)
         self.data = data
 
     # type is read only
     @property
     def type(self):
         return self._type
+
+    @property
+    def subtype(self):
+        return self._subtype
+
+    @subtype.setter
+    def subtype(self, val):
+        self._subtype = str(val)
 
     def serialize(self):
         return [
