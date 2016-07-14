@@ -92,7 +92,8 @@ class Peer:
         # peer's asyncio message loop runs in a thread
         ###
         self._thread = threading.Thread(target=self._thread_func,
-                                        args=(io_threads, hwm))
+                                        args=(io_threads, hwm),
+                                        name='Peer{}'.format(self._id))
         self._thread.daemon = True  # TODO: True or False?
         self._thread.start()
 

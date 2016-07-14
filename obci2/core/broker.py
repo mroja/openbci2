@@ -44,7 +44,7 @@ class MsgProxy:
         self._io_threads = io_threads
         self._hwm = hwm
         self._debug = False
-        self._thread = threading.Thread(target=self._run)
+        self._thread = threading.Thread(target=self._run, name='MsgProxy')
         self._thread.daemon = True  # TODO: True or False?
         self._thread.start()
 
@@ -133,7 +133,8 @@ class Broker:
         self._log_messages = True
 
         self._thread = threading.Thread(target=self._thread_func,
-                                        args=(io_threads, hwm))
+                                        args=(io_threads, hwm),
+                                        name='Broker')
         self._thread.daemon = True  # TODO: True or False?
         self._thread.start()
 
