@@ -72,6 +72,14 @@ setup(
         'numpy>=1.11.0'
     ],
 
+    tests_require=[
+        'pytest'
+    ],
+
+    setup_requires=[
+        'pytest-runner'
+    ],
+
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:

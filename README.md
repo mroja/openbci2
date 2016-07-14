@@ -4,7 +4,7 @@ Work in progress.
 
 To develop locally run "pip3 install -e ." inside openbci2 repository.
 
-To start tests run "py.test-3 -s" inside "openbci2/test" repository.
+To start tests run "python setup.py test --addopt -s" inside "openbci2/test" repository.
 
 # Requirements
 
@@ -26,4 +26,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
