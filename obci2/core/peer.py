@@ -67,6 +67,8 @@ class Peer:
         self._heartbeat_enabled = False
         self._heartbeat_delay = 0.05  # 50 ms
 
+        self._max_query_redirects = 10
+
         ###
         # logs verbosity
         ###
@@ -305,6 +307,37 @@ class Peer:
         if self._calc_send_stats:
             self._send_stats.msg(serialized_msg)
         await self._pub.send_multipart(serialized_msg)
+
+    async def query(self, query_type, query_params={}):
+        query_msg = Message(
+            'BROKER_QUERY', self._id, {
+                'type': query_type,
+                'params': query_params
+        })
+
+        broker_response = await self.send_broker_message(query_msg)
+
+        if broker_response.data['type'] == 'response':
+            return broker_response.data['data']
+        elif broker_response.data['type'] == 'redirect':
+            url = broker_response.data['data']
+
+            redirects = 0
+            while True:
+                response = await self.send_message_to_peer(url, query_msg)
+
+                if response.data['type'] == 'response':
+                    return broker_response.data['data']
+                elif response.data['type'] == 'redirect':
+                    url = broker_response.data['data']
+                else:
+                    return None
+
+                redirects += 1
+                if redirects >= _max_query_redirects:
+                    raise Exception('max redirects reached')
+        else:
+            return None
 
     async def handle_sync_message(self, msg):
         if self._log_messages:

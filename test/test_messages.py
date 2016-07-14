@@ -1,9 +1,4 @@
 
-import time
-import random
-import asyncio
-
-import zmq
 import pytest
 
 from obci2.core.messages import (Message,
