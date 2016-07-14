@@ -43,6 +43,7 @@ class MsgProxy:
         self._xsub_listening_urls = []
         self._io_threads = io_threads
         self._hwm = hwm
+        self._debug = False
         self._thread = threading.Thread(target=self._run)
         self._thread.daemon = True  # TODO: True or False?
         self._thread.start()
@@ -75,7 +76,7 @@ class MsgProxy:
                       ', '.join(self._xsub_listening_urls)))
 
         try:
-            if 0:
+            if self._debug:
                 poller = zmq.Poller()
                 poller.register(self._xpub, zmq.POLLIN)
                 poller.register(self._xsub, zmq.POLLIN)
@@ -196,15 +197,6 @@ class Broker:
                                 io_threads=self._io_threads,
                                 hwm=self._hwm,
                                 zmq_context=self._ctx)
-
-    # TODO
-    async def handle_query(self, query_msg):
-        if 0:
-            return b'RESPONSE:'
-        elif 0:
-            return b'REDIRECT_TO_PEER'
-        else:
-            return b'UNKNOWN'
 
     async def handle_request(self, msg):
         if self._log_messages:
