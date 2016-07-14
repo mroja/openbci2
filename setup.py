@@ -20,13 +20,13 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='1.0.0',
 
-    description='A sample Python project',
+    description='OpenBCI 2 framework',
 
     # The project's main homepage.
     url='https://github.com/BrainTech/openbci2',
 
     # Author details
-    author='Alex',
+    author='Alex Khrabrov',
     author_email='alex@mroja.net',
 
     # Choose your license
@@ -53,7 +53,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='bci openbci eeg',
+    keywords='openbci bci eeg',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
