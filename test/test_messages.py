@@ -20,11 +20,7 @@ def check_round_trip(msg_type, subtype, payload):
     msg_deserialized = Message.deserialize(msg_serialized)
     assert msg_deserialized.type == msg.type
     assert msg_deserialized.subtype == msg.subtype
-    if (msg.data is None
-            or isinstance(msg.data, bytes)
-            or isinstance(msg.data, str)
-            or isinstance(msg.data, dict)
-            ):
+    if msg.data is None or isinstance(msg.data, (str, bytes, dict)):
         assert msg_deserialized.data == msg.data
     else:
         raise Exception("don't know how to compare playloads for equality")

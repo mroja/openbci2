@@ -12,30 +12,31 @@ from ..utils.asyncio import Timeout
 from ..utils.zmq import bind_to_urls, recv_multipart_with_timeout
 from .messages import Message
 from .message_statistics import MsgPerfStats
+from .zmq_asyncio_task_manager import ZmqAsyncioTaskManager
 
 
 PeerInitUrls = namedtuple('PeerInitUrls', ['pub_urls', 'rep_urls', 'broker_rep_url'])
 
 
-class Peer:
+class Peer(ZmqAsyncioTaskManager):
 
-    def __init__(self, peer_id, urls, io_threads=1, hwm=1000, zmq_context=None):
+    def __init__(self, peer_id, urls, asyncio_loop=None, zmq_context=None, zmq_io_threads=1, hwm=1000):
+        peer_name = 'Peer_{}'.format(peer_id)
+        self._thread_name = peer_name
+        self._logger_name = peer_name
+
+        super().__init__(asyncio_loop, zmq_context, zmq_io_threads)
+
         assert isinstance(urls, (str, PeerInitUrls))
 
         self._id = peer_id
-        self._running = False
 
-        if zmq_context is None:
-            self._destroy_context = True
-            self._ctx = None
-        else:
-            self._destroy_context = False
-            self._ctx = zmq_context
+        self._hwm = hwm
 
-        self._pub = None
-        self._sub = None
-        self._req = None
-        self._rep = None
+        self._pub = None  # PUB socket for sending messages to broker XSUB
+        self._sub = None  # SUB socket for receiving messages from broker's XPUB
+        self._req = None  # synchronous connection to broker
+        self._rep = None  # synchronous requests from peers
 
         self._broker_rep_url = None
         self._broker_xpub_url = None
@@ -75,7 +76,6 @@ class Peer:
         ###
         self._log_messages = True
         self._log_peers_info = True
-        self._logger = logging.getLogger('Peer{}'.format(self._id))
 
         ###
         # message statistics
@@ -90,100 +90,46 @@ class Peer:
         self._calc_recv_stats = False
         self._recv_stats = MsgPerfStats(stats_interval, 'RECV')
 
-        ###
-        # peer's asyncio message loop runs in a thread
-        ###
-        self._thread = threading.Thread(target=self._thread_func,
-                                        args=(io_threads, hwm),
-                                        name='Peer{}'.format(self._id))
-        self._thread.daemon = True  # TODO: True or False?
-        self._thread.start()
+        self._create_sockets()
 
-    def call_threadsafe(self, func):
-        if self._loop is not None:
-            self._loop.call_soon_threadsafe(func)
+        self.create_task(self._connect_to_broker_wrapper())
 
-    def shutdown(self):
-        if self._running:
-            self.call_threadsafe(self._loop.stop)
-            self._thread.join()
+    def set_filter(self, msg_filter):
+        if self._sub is not None:
+            self._sub.subscribe(msg_filter.encode('utf-8'))
 
-    def _thread_func(self, io_threads, hwm):
+    def remove_filter(self, msg_filter):
+        if self._sub is not None:
+            self._sub.unsubscribe(msg_filter.encode('utf-8'))
+
+    def _cleanup():
+        self._pub.close(linger=0)
+        self._sub.close(linger=0)
+        self._req.close(linger=0)
+        self._rep.close(linger=0)
+        self._pub = None
+        self._sub = None
+        self._req = None
+        self._rep = None
+        super()._cleanup()
+
+    async def _connect_to_broker(self):
         try:
-            if self._ctx is None:
-                self._ctx = zmq.asyncio.Context(io_threads=io_threads)
-            self._loop = zmq.asyncio.ZMQEventLoop()
-            asyncio.set_event_loop(self._loop)
-
-            # PUB socket for sending messages to broker XSUB
             self._pub = self._ctx.socket(zmq.PUB)
-
-            # SUB socket fro receiving messages from broker's XPUB
             self._sub = self._ctx.socket(zmq.SUB)
-
-            # synchronous connection to broker
             self._req = self._ctx.socket(zmq.REQ)
-
-            # synchronous requests from peers
             self._rep = self._ctx.socket(zmq.REP)
-
-            self._pub.set_hwm(hwm)
-            self._sub.set_hwm(hwm)
-            self._req.set_hwm(hwm)
-            self._rep.set_hwm(hwm)
-
-            self._pub.set(zmq.LINGER, 0)
-            self._sub.set(zmq.LINGER, 0)
-            self._req.set(zmq.LINGER, 0)
-            self._rep.set(zmq.LINGER, 0)
-
-            self._loop.create_task(self._connect_to_broker_wrapper())
-            self._running = True
-            self._loop.run_forever()
+            for socket in [self._pub, self._sub, self._req, self._rep]:
+                socket.set_hwm(self._hwm)
+                socket.set(zmq.LINGER, 0)
+            await self.__connect_to_broker_impl()
         except Exception as ex:
-            self._logger.error(ex)
-        finally:
-            try:
-                self._running = False
-                self._logger.info("Peer '{}' message loop finished".format(self._id))
-
-                tasks = asyncio.gather(*asyncio.Task.all_tasks())
-                tasks.cancel()
-
-                try:
-                    self._loop.run_until_complete(tasks)
-                except Exception:
-                    pass
-
-                self._pub.close(linger=0)
-                self._pub = None
-                self._sub.close(linger=0)
-                self._sub = None
-                self._req.close(linger=0)
-                self._req = None
-                self._rep.close(linger=0)
-                self._rep = None
-
-                self._loop.close()
-                if self._destroy_context:
-                    self._ctx.destroy()
-                    self._logger.info("Peer '{}': context destroyed".format(self._id))
-
-                self._logger.info("Peer '{}': thread finished".format(self._id))
-            except Exception as ex:
-                self._logger.error('final error: {}'.format(ex))
-
-    async def _connect_to_broker_wrapper(self):
-        try:
-            await self._connect_to_broker()
-        except Exception as ex:
-            self._logger.error("Peer '{}': init failed: {}: {}".format(self._id, type(ex), ex))
-            self._logger.error(traceback.format_exc())
+            self._logger.exception("initialization failed: {}: {}".format(self._id, type(ex), ex))
         else:
             self._loop.create_task(self.heartbeat())
             self._loop.create_task(self.initialization_finished())
 
-    async def _connect_to_broker(self):
+    async def __connect_to_broker_impl(self):
         self._pub_listening_urls = bind_to_urls(self._pub, self._pub_urls)
         self._rep_listening_urls = bind_to_urls(self._rep, self._rep_urls)
 
@@ -241,7 +187,6 @@ class Peer:
         self._broker_xsub_url = response.data['xsub_url']
         self._sub.connect(self._broker_xpub_url)
         self._pub.connect(self._broker_xsub_url)
-        # self._sub.subscribe(b'')
 
         if self._log_peers_info:
             msg = ("\n"
@@ -257,128 +202,109 @@ class Peer:
             self._logger.info(msg)
 
     async def initialization_finished(self):
-        self._loop.create_task(self._receive_sync_messages())
-        self._loop.create_task(self._receive_async_messages())
-
-    def set_filter(self, msg_filter):
-        self._sub.subscribe(msg_filter.encode('utf-8'))
-
-    def remove_filter(self, msg_filter):
-        self._sub.unsubscribe(msg_filter.encode('utf-8'))
+        self.create_task(self._receive_sync_messages())
+        self.create_task(self._receive_async_messages())
 
     async def heartbeat(self):
-        hb_msg = Message('HEARTBEAT', self._id)
+        heartbeat_message = Message('HEARTBEAT', self._id)
         while True:
-            heartbeat_timestamp = time.time()
-
+            heartbeat_timestamp = time.monotonic()
             if self._heartbeat_enabled:
-                await self.send_message(hb_msg)
-
-            if not self._running:
-                break
-
-            sleep_duration = self._heartbeat_delay - (time.time() - heartbeat_timestamp)
+                await self.send_message(heartbeat_message)
+            sleep_duration = self._heartbeat_delay - (time.monotonic() - heartbeat_timestamp)
             if sleep_duration < 0:
                 sleep_duration = 0
             await asyncio.sleep(sleep_duration)
-
             if not self._running:
                 break
 
     async def send_broker_message(self, msg):
+        if self._log_messages:
+            self._logger.debug("sending sync message to broker: type '{}', subtype '{}'"
+                               .format(msg.type, msg.subtype))
         await self._req.send_multipart(msg.serialize())
         response = await recv_multipart_with_timeout(self._req)
         return Message.deserialize(response)
 
     async def send_message_to_peer(self, url, msg):
+        if self._log_messages:
+            self._logger.debug("sending sync message to '{}': type '{}', subtype '{}'"
+                               .format(url, msg.type, msg.subtype))
         req = self._ctx.socket(zmq.REQ)
         req.connect(url)
-        await req.send_multipart(msg.serialize())
-        response = await req.recv_multipart()
-        req.close()
+        try:
+            await req.send_multipart(msg.serialize())
+            response = await recv_multipart_with_timeout(req)
+        finally:
+            req.close(linger=0)
         return Message.deserialize(response)
 
     async def send_message(self, msg):
         if self._log_messages:
-            self._logger.debug("peer '{}': sending: type '{}', subtype '{}'"
-                               .format(self._id,
-                                       msg.type,
-                                       msg.subtype))
+            self._logger.debug("sending async message: type '{}', subtype '{}'"
+                               .format(msg.type, msg.subtype))
         serialized_msg = msg.serialize()
         if self._calc_send_stats:
             self._send_stats.msg(serialized_msg)
         await self._pub.send_multipart(serialized_msg)
 
     async def query(self, query_type, query_params={}):
-        query_msg = Message(
-            'BROKER_QUERY', self._id, {
-                'type': query_type,
-                'params': query_params
-            })
-
+        query_msg = Message('BROKER_QUERY', self._id, { 'type': query_type, 'params': query_params })
         broker_response = await self.send_broker_message(query_msg)
-
         if broker_response.data['type'] == 'response':
             return broker_response.data['data']
         elif broker_response.data['type'] == 'redirect':
             url = broker_response.data['data']
-
             redirects = 0
             while True:
                 response = await self.send_message_to_peer(url, query_msg)
-
                 if response.data['type'] == 'response':
                     return broker_response.data['data']
                 elif response.data['type'] == 'redirect':
                     url = broker_response.data['data']
                 else:
                     return None
-
                 redirects += 1
-                if redirects >= _max_query_redirects:
+                if redirects >= self._max_query_redirects:
                     raise Exception('max redirects reached')
         else:
             return None
 
     async def handle_sync_message(self, msg):
         if self._log_messages:
-            self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
-                               .format(self._id,
-                                       msg.type,
-                                       msg.subtype))
-        return Message('INVALID_REQUEST', self._id, 'Handler not implemented')
+            self._logger.debug("received sync message: type '{}', subtype: '{}'"
+                               .format(msg.type, msg.subtype))
+        return Message('INTERNAL_ERROR', self._id, 'Handler not implemented')
 
     async def handle_async_message(self, msg):
         if self._log_messages:
-            self._logger.debug("peer '{}', received: type '{}', subtype: '{}'"
-                               .format(self._id,
-                                       msg.type,
-                                       msg.subtype))
+            self._logger.debug("received async message: type '{}', subtype: '{}'"
+                               .format(msg.type, msg.subtype))
 
-    async def _receive_sync_messages_handler(self):
-        msg = await self._rep.recv_multipart()
-        replay = await self.handle_sync_message(Message.deserialize(msg))
-        await self._rep.send_multipart(replay.serialize())
+    async def _receive_sync_messages(self):
+        async def sync_handler():
+            await self._rep.send_multipart((
+                await self.handle_sync_message(Message.deserialize(
+                    await self._rep.recv_multipart()))).serialize())
+        await self.__receive_messages_helper(self._rep, sync_handler)
 
-    async def _receive_async_messages_handler(self):
-        msg = await self._sub.recv_multipart()
-        msg = Message.deserialize(msg)
-        if self._calc_recv_stats:
-            self._recv_stats.msg(msg)
-        await self.handle_async_message(msg)
+    async def _receive_async_messages(self):
+        async def async_handler():
+            msg = Message.deserialize(await self._sub.recv_multipart())
+            if self._calc_recv_stats:
+                self._recv_stats.msg(msg)
+            await self.handle_async_message(msg)
+        await self.__receive_messages_helper(self._sub, async_handler)
 
-    async def _receive_messages_helper(self, socket, handler):
+    async def __receive_messages_helper(self, socket, handler):
+        """
+        Two concurrent polling loops are run (for SUB and REP) to avoid one message type processing blocking another.
+        """
         poller = zmq.asyncio.Poller()
         poller.register(socket, zmq.POLLIN)
         while True:
-            events = await poller.poll(timeout=50)  # in milliseconds
+            events = await poller.poll(timeout=100)  # timeout in milliseconds
             if len(events) == 0 and not self._running:
                 break
             if socket in dict(events):
                 await handler()
-
-    async def _receive_sync_messages(self):
-        await self._receive_messages_helper(self._rep, self._receive_sync_messages_handler)
-
-    async def _receive_async_messages(self):
-        await self._receive_messages_helper(self._sub, self._receive_async_messages_handler)

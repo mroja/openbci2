@@ -98,6 +98,7 @@ class Message:
 #
 
 Message.register_serializer('INVALID_REQUEST', StringMessageSerializer)
+Message.register_serializer('INTERNAL_ERROR', StringMessageSerializer)
 Message.register_serializer('HEARTBEAT', NullMessageSerializer)
 
 Message.register_serializer('PEERS_READY', NullMessageSerializer)

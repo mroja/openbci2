@@ -18,7 +18,13 @@ def bind_to_urls(socket, urls):
 class TimeoutException(Exception):
     pass
 
+
 async def recv_multipart_with_timeout(socket, timeout=1.0, sleep_interval=0.01):
+    """
+    This wrapper exists because of a bug in socket.recv_multipart function
+    (zmq.asyncio sockets ignore RCVTIMEO option).
+    For more information see: https://github.com/zeromq/pyzmq/issues/825.
+    """
     start_time = time.monotonic()
     while True:
         try:

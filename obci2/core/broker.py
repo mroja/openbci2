@@ -9,6 +9,7 @@ import zmq.asyncio
 from ..utils.zmq import bind_to_urls
 from .messages import Message
 from .peer import Peer, PeerInitUrls
+from .zmq_asyncio_task_manager import ZmqAsyncioTaskManager
 
 
 BROKER_REP_INTERNAL_URL = 'inproc://broker_rep'
@@ -56,7 +57,8 @@ class MsgProxy:
 
     def shutdown(self):
         if self._ctx is not None:
-            self._ctx.term()
+            if self._destroy_context:
+                self._ctx.destroy()
         self._thread.join()
 
     def _run(self):
@@ -109,14 +111,20 @@ class BrokerPeer(Peer):
     pass
 
 
-class Broker:
+class Broker(ZmqAsyncioTaskManager):
 
-    def __init__(self, rep_urls, xpub_urls, xsub_urls, io_threads=1, hwm=1000):
-        self._running = False
-        self._io_threads = io_threads
+    def __init__(self, rep_urls, xpub_urls, xsub_urls, asyncio_loop=None, zmq_context=None,
+                 zmq_io_threads=1, hwm=1000, msg_proxy_io_threads=1, msg_proxy_hwm=1000):
+        broker_name = 'Broker'
+        self._thread_name = broker_name
+        self._logger_name = broker_name
+
+        super().__init__(asyncio_loop, zmq_context, zmq_io_threads)
+
         self._hwm = hwm
 
         self._rep = None
+
         self._rep_urls = rep_urls + [BROKER_REP_INTERNAL_URL]
         self._xpub_urls = xpub_urls + [BROKER_XPUB_INTERNAL_URL]
         self._xsub_urls = xsub_urls + [BROKER_XSUB_INTERNAL_URL]
@@ -126,8 +134,8 @@ class Broker:
         # run XPUB & XSUB proxy in different thread
         self._msg_proxy = MsgProxy(self._xpub_urls,
                                    self._xsub_urls,
-                                   io_threads=io_threads,
-                                   hwm=hwm)
+                                   io_threads=msg_proxy_io_threads,
+                                   hwm=msg_proxy_hwm)
 
         self._peer = None
 
@@ -137,15 +145,9 @@ class Broker:
         self._query_redirect_types = {}
 
         self._log_messages = True
-        self._logger = logging.getLogger('Broker')
-
-        self._thread = threading.Thread(target=self._thread_func,
-                                        args=(io_threads, hwm),
-                                        name='Broker')
-        self._thread.daemon = True  # TODO: True or False?
-        self._thread.start()
 
     def shutdown(self):
+        super().shutdown()
         if self._running:
             self._msg_proxy.shutdown()
             self._peer.shutdown()
@@ -158,10 +160,6 @@ class Broker:
 
     def _thread_func(self, io_threads, hwm):
         try:
-            self._ctx = zmq.asyncio.Context(io_threads=io_threads)
-            self._loop = zmq.asyncio.ZMQEventLoop()
-            asyncio.set_event_loop(self._loop)
-
             self._rep = self._ctx.socket(zmq.REP)
             self._rep.set_hwm(hwm)
             self._rep.set(zmq.LINGER, 0)
@@ -172,29 +170,9 @@ class Broker:
 
             self._start_internal_peer()
 
-            self._loop.create_task(self._receive_and_handle_requests())
-            self._running = True
-            self._loop.run_forever()
-        except Exception as ex:
-            self._logger.error(ex)
-        finally:
-            self._running = False
-            self._logger.info("Broker message loop finished")
-
-            tasks = asyncio.gather(*asyncio.Task.all_tasks())
-            tasks.cancel()
-
-            try:
-                self._loop.run_until_complete(tasks)
-            except Exception:
-                pass
-
+    def __():
             self._rep.close(linger=0)
             self._rep = None
-
-            self._loop.close()
-            self._ctx.destroy()
-            self._logger.info("Broker context destroyed")
 
     def _start_internal_peer(self):
         urls = PeerInitUrls(pub_urls=[BROKER_INTERNAL_PEER_PUB_URL],
@@ -234,12 +212,12 @@ class Broker:
             if query_type in self._query_types:
                 response = {
                     'type': 'response',
-                    'data': self._query_types[query_type]
+                    'data': self._query_types[query_type]()
                 }
             elif query_type in self._query_redirect_types:
                 response = {
                     'type': 'redirect',
-                    'data': self._query_redirect_types[query_type]
+                    'data': self._query_redirect_types[query_type]()
                 }
             else:
                 response = {

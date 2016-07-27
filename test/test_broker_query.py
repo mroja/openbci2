@@ -16,12 +16,12 @@ class QueryTestBroker(Broker):
             'QUERY_2': 'abc'
         }
         self._query_redirect_types = {
-            'QUERY_REDIRECT': 'tcp://127.0.0.1:20001',
+            'QUERY_REDIRECT': 'tcp://127.0.0.1:20002',
             'QUERY_REDIRECT_LOOP': 'tcp://127.0.0.1:20002'
         }
 
 
-class QueryAnswerTestPeer(Peer):
+class QueryCommonPeer(Peer):
 
     def __init__(self, peer_id, urls, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
@@ -33,7 +33,7 @@ class QueryAnswerTestPeer(Peer):
         await super().initialization_finished()
         self.init_finished = True
 
-    def do_query_threadsafe(self, query_type):
+    def do_query_and_wait_for_result(self, query_type):
         pass
 
     async def handle_sync_message(self, msg):
@@ -80,8 +80,7 @@ class QueryAnswerLoopRedirectTestPeer(QueryAnswerTestPeer):
         }
 
 
-@pytest.mark.timeout(10)
-def run_query_test(broker_rep,
+def test_query_1(broker_rep,
                    broker_xpub,
                    broker_xsub,
                    peer_pub,
@@ -92,16 +91,21 @@ def run_query_test(broker_rep,
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
-    peer = QueryAnswerTestPeer(1, urls)
+
+    querying_peer = QueryCommonPeer(1, urls)
+
 
     while True:
         if peer.init_finished and len(broker._peers.keys()) == 2:
             break
         time.sleep(0.05)
 
-    peer.call_threadsafe()
+    result = peer.do_query_and_wait_for_result()
 
-    peer.shutdown()
+    assert result.type == ''
+    assert result.data == ''
+
+    querying_peer.shutdown()
     broker.shutdown()
 
 
