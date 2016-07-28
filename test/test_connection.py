@@ -13,11 +13,11 @@ from obci2.core.messages import Message, NullMessageSerializer
 from obci2.core.peer import Peer, PeerInitUrls
 
 
-class TestBroker(Broker):
+class CustomBroker(Broker):
     pass
 
 
-class TestPeer(Peer):
+class CustomPeer(Peer):
 
     def __init__(self, peer_id, urls, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
@@ -28,7 +28,7 @@ class TestPeer(Peer):
         self.init_finished = True
 
 
-class TestPeerWithMsgHistory(TestPeer):
+class CustomBrokerWithMsgHistory(CustomPeer):
 
     def __init__(self, peer_id, urls, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
@@ -48,7 +48,7 @@ class TestPeerWithMsgHistory(TestPeer):
         self.received_async_messages.append(msg)
 
 
-class SingleMessageSenderTestPeer(TestPeer):
+class SingleMessageSenderTestPeer(CustomPeer):
 
     def __init__(self, peer_id, urls, msg_to_send, messages_count=1, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
@@ -62,7 +62,7 @@ class SingleMessageSenderTestPeer(TestPeer):
             self.sent_messages_count += 1
 
 
-class SingleMessageReceiverTestPeer(TestPeer):
+class SingleMessageReceiverTestPeer(CustomPeer):
 
     def __init__(self, peer_id, urls, msg_to_receive, **kwargs):
         super().__init__(peer_id, urls, **kwargs)
@@ -92,12 +92,12 @@ def run_connection_test(broker_rep,
                         peer_pub,
                         peer_rep):
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
+    broker = CustomBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
-    peer = TestPeer(1, urls)
+    peer = CustomPeer(1, urls)
 
     while True:
         if peer.init_finished and len(broker._peers.keys()) == 2:
@@ -115,13 +115,13 @@ def run_connection_test_2(broker_rep,
                           peer_pub,
                           peer_rep):
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
+    broker = CustomBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
-    peer1 = TestPeer(1, urls)
-    peer2 = TestPeer(2, urls)
+    peer1 = CustomPeer(1, urls)
+    peer2 = CustomPeer(2, urls)
 
     while True:
         if peer1.init_finished and peer2.init_finished and len(broker._peers.keys()) == 3:
@@ -183,12 +183,12 @@ def test_connection_3():
         'tcp://127.0.0.1:20202', 'tcp://127.0.0.1:30203'
     ]
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
+    broker = CustomBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     urls = PeerInitUrls(pub_urls=peer_pub_urls,
                         rep_urls=peer_rep_urls,
                         broker_rep_url=broker_rep)
-    peer = TestPeerWithMsgHistory(1, urls)
+    peer = CustomBrokerWithMsgHistory(1, urls)
 
     while True:
         if peer.init_finished and len(broker._peers.keys()) == 2:
@@ -258,7 +258,7 @@ def test_connection_4():
     A_msgs_count = 5
     B_msgs_count = 5
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
+    broker = CustomBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     msg_to_send = A_msgs_count * ['A'] + B_msgs_count * ['B']
     random.shuffle(msg_to_send)
