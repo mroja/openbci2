@@ -9,13 +9,6 @@ from .peer import Peer, PeerInitUrls
 from .zmq_asyncio_task_manager import ZmqAsyncioTaskManager
 from ..utils.zmq import bind_to_urls
 
-BROKER_REP_INTERNAL_URL = 'inproc://broker_rep'
-BROKER_XPUB_INTERNAL_URL = 'inproc://broker_xpub'
-BROKER_XSUB_INTERNAL_URL = 'inproc://broker_xsub'
-
-BROKER_INTERNAL_PEER_PUB_URL = 'inproc://broker_peer_pub'
-BROKER_INTERNAL_PEER_REP_URL = 'inproc://broker_peer_rep'
-
 
 class PeerInfo:
 
@@ -29,38 +22,28 @@ class PeerInfo:
 
 class MsgProxy:
 
-    def __init__(self, xpub_urls, xsub_urls, io_threads=1, hwm=1000, zmq_context=None):
-        if zmq_context is None:
-            self._destroy_context = True
-            self._ctx = None
-        else:
-            self._destroy_context = False
-            self._ctx = zmq_context
-
+    def __init__(self, xpub_urls, xsub_urls, io_threads=1, hwm=1000):
         self._xpub_urls = xpub_urls
         self._xsub_urls = xsub_urls
         self._xpub_listening_urls = []
         self._xsub_listening_urls = []
         self._io_threads = io_threads
         self._hwm = hwm
+        self._ctx = zmq.Context(io_threads=self._io_threads)
 
         self._debug = False
 
         self._logger = logging.getLogger('MsgProxy')
 
         self._thread = threading.Thread(target=self._run, name='MsgProxy')
-        self._thread.daemon = True  # TODO: True or False?
+        self._thread.daemon = True
         self._thread.start()
 
     def shutdown(self):
-        if self._ctx is not None:
-            if self._destroy_context:
-                self._ctx.destroy()
+        self._ctx.term()
         self._thread.join()
 
     def _run(self):
-        if self._ctx is None:
-            self._ctx = zmq.Context(io_threads=self._io_threads)
 
         self._xpub = self._ctx.socket(zmq.XPUB)
         self._xsub = self._ctx.socket(zmq.XSUB)
@@ -100,9 +83,9 @@ class MsgProxy:
             else:
                 zmq.proxy(self._xsub, self._xpub)
         except zmq.ContextTerminated:
-            self._xsub.close()
+            self._xsub.close(linger=0)
             self._xsub = None
-            self._xpub.close()
+            self._xpub.close(linger=0)
             self._xpub = None
 
 
@@ -124,9 +107,9 @@ class Broker(ZmqAsyncioTaskManager):
 
         self._rep = None
 
-        self._rep_urls = rep_urls + [BROKER_REP_INTERNAL_URL]
-        self._xpub_urls = xpub_urls + [BROKER_XPUB_INTERNAL_URL]
-        self._xsub_urls = xsub_urls + [BROKER_XSUB_INTERNAL_URL]
+        self._rep_urls = rep_urls
+        self._xpub_urls = xpub_urls
+        self._xsub_urls = xsub_urls
 
         self._rep_listening_urls = []
 
@@ -147,15 +130,6 @@ class Broker(ZmqAsyncioTaskManager):
 
         self.create_task(self._initialize_broker())
 
-    def shutdown(self):
-        super().shutdown()
-        if self._running:
-            self._msg_proxy.shutdown()
-            self._peer.shutdown()
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self._thread.join()
-            self._ctx.destroy()
-
     def add_peer(self, peer_id, peer_info):
         self._peers[peer_id] = peer_info
 
@@ -166,11 +140,11 @@ class Broker(ZmqAsyncioTaskManager):
 
         self._rep_listening_urls = bind_to_urls(self._rep, self._rep_urls)
 
-        self._logger.info("Broker: REP: {}".format(', '.join(self._rep_listening_urls)))
+        self._logger.info("Broker: listening on REP: {}".format(', '.join(self._rep_listening_urls)))
 
-        urls = PeerInitUrls(pub_urls=[BROKER_INTERNAL_PEER_PUB_URL],
-                            rep_urls=[BROKER_INTERNAL_PEER_REP_URL],
-                            broker_rep_url=BROKER_REP_INTERNAL_URL)
+        urls = PeerInitUrls(pub_urls=['tcp://127.0.0.1:*'],
+                            rep_urls=['tcp://127.0.0.1:*'],
+                            broker_rep_url=self._rep_listening_urls[0])
         self._peer = BrokerPeer(peer_id=0,
                                 urls=urls,
                                 zmq_io_threads=self._zmq_io_threads,
@@ -180,8 +154,10 @@ class Broker(ZmqAsyncioTaskManager):
         self.create_task(self._receive_and_handle_requests())
 
     def _cleanup(self):
+        self._peer.shutdown()
         self._rep.close(linger=0)
         self._rep = None
+        self._msg_proxy.shutdown()
         super()._cleanup()
 
     async def handle_request(self, msg):
@@ -233,8 +209,6 @@ class Broker(ZmqAsyncioTaskManager):
         poller.register(self._rep, zmq.POLLIN)
         while True:
             events = await poller.poll(timeout=50)  # in milliseconds
-            if len(events) == 0:
-                break
             if self._rep in dict(events):
                 msg = await self._rep.recv_multipart()
                 msg = Message.deserialize(msg)

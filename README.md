@@ -10,7 +10,7 @@ To start tests run `python3 setup.py test --addopt -s` inside `openbci2` reposit
 
 # Requirements
 
-    sudo apt install python3-venv python3-pytest python3-pytest-timeout
+    sudo apt install python3-venv python3-pytest python3-pytest-timeout python3-pytest-cov
 
 # License
 

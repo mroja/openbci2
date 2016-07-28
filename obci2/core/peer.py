@@ -150,7 +150,8 @@ class Peer(ZmqAsyncioTaskManager):
             Message('BROKER_HELLO', self._id, {
                 'pub_urls': self._pub_listening_urls,
                 'rep_urls': self._rep_listening_urls
-            })
+            }),
+            timeout=10.0
         )
 
         self._pub_urls += response.data['extra_pub_urls']
@@ -175,7 +176,9 @@ class Peer(ZmqAsyncioTaskManager):
             Message('BROKER_REGISTER_PEER', self._id, {
                 'pub_urls': self._pub_listening_urls,
                 'rep_urls': self._rep_listening_urls
-            }))
+            }),
+            timeout=10.0
+        )
         self._broker_xpub_url = response.data['xpub_url']
         self._broker_xsub_url = response.data['xsub_url']
         self._sub.connect(self._broker_xpub_url)
@@ -209,12 +212,12 @@ class Peer(ZmqAsyncioTaskManager):
                 sleep_duration = 0
             await asyncio.sleep(sleep_duration)
 
-    async def send_broker_message(self, msg):
+    async def send_broker_message(self, msg, timeout=1.0):
         if self._log_messages:
             self._logger.debug("sending sync message to broker: type '{}', subtype '{}'"
                                .format(msg.type, msg.subtype))
         await self._req.send_multipart(msg.serialize())
-        response = await recv_multipart_with_timeout(self._req)
+        response = await recv_multipart_with_timeout(self._req, timeout=timeout)
         return Message.deserialize(response)
 
     async def send_message_to_peer(self, url, msg):

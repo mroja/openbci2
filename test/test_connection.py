@@ -56,16 +56,10 @@ class SingleMessageSenderTestPeer(TestPeer):
         self.messages_count = messages_count
         self.sent_messages_count = 0
 
-    async def _send_messages_coroutine(self):
+    async def send_messages(self):
         for _ in range(self.messages_count):
             await self.send_message(Message(self.msg_to_send, self._id))
             self.sent_messages_count += 1
-
-    def _send_messages_impl(self):
-        self._loop.create_task(self._send_messages_coroutine())
-
-    def send_messages_threadsafe(self):
-        self._loop.call_soon_threadsafe(self._send_messages_impl)
 
 
 class SingleMessageReceiverTestPeer(TestPeer):
@@ -114,6 +108,31 @@ def run_connection_test(broker_rep,
     broker.shutdown()
 
 
+@pytest.mark.timeout(10)
+def run_connection_test_2(broker_rep,
+                          broker_xpub,
+                          broker_xsub,
+                          peer_pub,
+                          peer_rep):
+
+    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
+
+    urls = PeerInitUrls(pub_urls=[peer_pub],
+                        rep_urls=[peer_rep],
+                        broker_rep_url=broker_rep)
+    peer1 = TestPeer(1, urls)
+    peer2 = TestPeer(2, urls)
+
+    while True:
+        if peer1.init_finished and peer2.init_finished and len(broker._peers.keys()) == 3:
+            break
+        time.sleep(0.05)
+
+    peer1.shutdown()
+    peer2.shutdown()
+    broker.shutdown()
+
+
 def test_connection_1():
     params = {
         'broker_rep': 'tcp://127.0.0.1:20001',
@@ -126,7 +145,7 @@ def test_connection_1():
     print('test_1 finished')
 
 
-def test_connection_2():
+def test_connection_2a():
     params = {
         'broker_rep': 'tcp://127.0.0.1:20001',
         'broker_xpub': 'tcp://127.0.0.1:20002',
@@ -135,7 +154,19 @@ def test_connection_2():
         'peer_rep': 'tcp://127.0.0.1:*'
     }
     run_connection_test(**params)
-    print('test_2 finished')
+    print('test_2a finished')
+
+
+def test_connection_2b():
+    params = {
+        'broker_rep': 'tcp://127.0.0.1:20001',
+        'broker_xpub': 'tcp://127.0.0.1:20002',
+        'broker_xsub': 'tcp://127.0.0.1:20003',
+        'peer_pub': 'tcp://127.0.0.1:*',
+        'peer_rep': 'tcp://127.0.0.1:*'
+    }
+    run_connection_test_2(**params)
+    print('test_2b finished')
 
 
 def test_connection_3():
@@ -152,7 +183,7 @@ def test_connection_3():
         'tcp://127.0.0.1:20202', 'tcp://127.0.0.1:30203'
     ]
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub], 1)
+    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     urls = PeerInitUrls(pub_urls=peer_pub_urls,
                         rep_urls=peer_rep_urls,
@@ -175,16 +206,16 @@ def test_connection_3():
         sub.connect(url)
         sub.subscribe(b'')
 
-    def send_test_messages():
-        async def send():
-            for _ in range(1):
-                await peer.send_message(Message('TEST', '1'))
-                await asyncio.sleep(0.1)
-        peer._loop.create_task(send())
+    async def send_test_messages():
+        for _ in range(1):
+            await peer.send_message(Message('TEST', '1'))
+            await asyncio.sleep(0.1)
 
-    peer.call_threadsafe(send_test_messages)
+    time.sleep(0.5)
 
-    time.sleep(1.0)
+    peer.create_task(send_test_messages())
+
+    time.sleep(0.5)
 
     for url, sub in zip(peer_pub_urls, sub_sockets):
         msg = sub.recv_multipart()
@@ -224,10 +255,10 @@ def test_connection_4():
     peer_pub = 'tcp://127.0.0.1:*'
     peer_rep = 'tcp://127.0.0.1:*'
 
-    A_msgs_count = 2  # 25
-    B_msgs_count = 2  # 25
+    A_msgs_count = 5
+    B_msgs_count = 5
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub], 2 * (A_msgs_count + B_msgs_count))
+    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     msg_to_send = A_msgs_count * ['A'] + B_msgs_count * ['B']
     random.shuffle(msg_to_send)
@@ -237,6 +268,8 @@ def test_connection_4():
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
+
+    time.sleep(1.0)
 
     peers_receive_A = []
     for _ in range(A_msgs_count):
@@ -258,15 +291,18 @@ def test_connection_4():
     while True:
         all_ready = True
         for peer in all_peers:
+            #print(peer.init_finished)
             if not peer.init_finished:
                 all_ready = False
                 break
         if all_ready:
             break
-        time.sleep(0.1)
+        time.sleep(0.05)
+
+    time.sleep(1.0)
 
     for peer in peers_senders:
-        peer.send_messages_threadsafe()
+        peer.create_task(peer.send_messages())
 
     time.sleep(1.0)
 
@@ -289,11 +325,13 @@ def test_connection_4():
     print('test_4 finished')
 
 if __name__ == '__main__':
-    logging.root.setLevel(logging.DEBUG)
+    #logging.root.setLevel(logging.DEBUG)
+    logging.root.setLevel(logging.INFO)
     console = logging.StreamHandler()
     logging.root.addHandler(console)
 
     test_connection_1()
-    test_connection_2()
+    test_connection_2a()
+    test_connection_2b()
     test_connection_3()
     test_connection_4()
