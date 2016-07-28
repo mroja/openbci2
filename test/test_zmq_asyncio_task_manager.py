@@ -20,6 +20,7 @@ class ZmqAsyncioTaskManagerWithName(ZmqAsyncioTaskManager):
 async def task1():
     thread = threading.current_thread()
     print("task 1 - '{}' ({})".format(thread.name, thread.ident))
+    return 1
 
 
 async def task2():
@@ -27,6 +28,7 @@ async def task2():
     await asyncio.sleep(UNDER_TIMEOUT_DELAY)
     thread = threading.current_thread()
     print("task 2 - '{}' ({})".format(thread.name, thread.ident))
+    return 2
 
 
 async def task3():
@@ -34,6 +36,7 @@ async def task3():
     await asyncio.sleep(OVER_TIMEOUT_DELAY)
     thread = threading.current_thread()
     print("task 3 - '{}' ({})".format(thread.name, thread.ident))
+    return 3
 
 
 def all_mgr_threads_finished():
@@ -52,8 +55,8 @@ def context_mgr_helper(iterations, force_shutdown_times):
             for _ in range(force_shutdown_times):
                 mgr.shutdown()
                 assert len(mgr._tasks) == 0
-        assert future1.result() is None
-        assert future2.result() is None
+        assert future1.result() is 1
+        assert future2.result() is 2
         with pytest.raises(asyncio.CancelledError):
             future3.result()
         assert all_mgr_threads_finished()
@@ -85,8 +88,8 @@ def shutdown_helper(force_shutdown_times):
         assert len(mgr._tasks) == 0
         assert all_mgr_threads_finished()
 
-    assert future1.result() is None
-    assert future2.result() is None
+    assert future1.result() is 1
+    assert future2.result() is 2
     with pytest.raises(asyncio.CancelledError):
         future3.result()
 

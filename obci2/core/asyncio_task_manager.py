@@ -62,7 +62,7 @@ class AsyncioTaskManager:
             fut = None
             try:
                 fut = asyncio.ensure_future(coro, loop=self._loop)
-                await fut
+                return await fut
             except asyncio.CancelledError:
                 self._logger.warn('Coroutine cancelled: {}, {}'.format(fut, coro))
                 raise
