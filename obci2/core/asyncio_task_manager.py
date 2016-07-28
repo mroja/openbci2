@@ -82,7 +82,7 @@ class AsyncioTaskManager:
 
     def shutdown(self):
         """
-        This function can be called from ANY thread.
+        This function can be called from ANY thread, but NOT from event loop.
         It will block until all pending tasks are finished.
         Can be called multiple times.
         """

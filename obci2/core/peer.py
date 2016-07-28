@@ -12,6 +12,10 @@ from ..utils.zmq import bind_to_urls, recv_multipart_with_timeout
 PeerInitUrls = namedtuple('PeerInitUrls', ['pub_urls', 'rep_urls', 'broker_rep_url'])
 
 
+class TooManyRedirectsException(Exception):
+    pass
+
+
 class Peer(ZmqAsyncioTaskManager):
 
     def __init__(self, peer_id, urls, asyncio_loop=None, zmq_context=None, zmq_io_threads=1, hwm=1000):
@@ -253,33 +257,33 @@ class Peer(ZmqAsyncioTaskManager):
             while True:
                 response = await self.send_message_to_peer(url, query_msg)
                 if response.data['type'] == 'response':
-                    return broker_response.data['data']
+                    return response.data['data']
                 elif response.data['type'] == 'redirect':
-                    url = broker_response.data['data']
+                    url = response.data['data']
                 else:
                     return None
                 redirects += 1
                 if redirects >= self._max_query_redirects:
-                    raise Exception('max redirects reached')
+                    self._logger.error("max redirects ({}) reached when executing query '{}'"
+                                       .format(self._max_query_redirects, query_type))
+                    raise TooManyRedirectsException('max redirects reached')
         else:
             return None
 
     async def handle_sync_message(self, msg):
-        if self._log_messages:
-            self._logger.debug("received sync message: type '{}', subtype: '{}'"
-                               .format(msg.type, msg.subtype))
         return Message('INTERNAL_ERROR', self._id, 'Handler not implemented')
 
     async def handle_async_message(self, msg):
-        if self._log_messages:
-            self._logger.debug("received async message: type '{}', subtype: '{}'"
-                               .format(msg.type, msg.subtype))
+        pass
 
     async def _receive_sync_messages(self):
         async def sync_handler():
-            await self._rep.send_multipart((
-                await self.handle_sync_message(Message.deserialize(
-                    await self._rep.recv_multipart()))).serialize())
+            msg = Message.deserialize(await self._rep.recv_multipart())
+            if self._log_messages:
+                self._logger.debug("received sync message: type '{}', subtype: '{}'"
+                                   .format(msg.type, msg.subtype))
+            response = await self.handle_sync_message(msg)
+            await self._rep.send_multipart(response.serialize())
         await self.__receive_messages_helper(self._rep, sync_handler)
 
     async def _receive_async_messages(self):
@@ -287,6 +291,9 @@ class Peer(ZmqAsyncioTaskManager):
             msg = Message.deserialize(await self._sub.recv_multipart())
             if self._calc_recv_stats:
                 self._recv_stats.msg(msg)
+            if self._log_messages:
+                self._logger.debug("received async message: type '{}', subtype: '{}'"
+                                   .format(msg.type, msg.subtype))
             await self.handle_async_message(msg)
         await self.__receive_messages_helper(self._sub, async_handler)
 
