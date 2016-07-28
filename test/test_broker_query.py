@@ -1,10 +1,4 @@
-
-import pytest
-
-from obci2.core.messages import (Message,
-                                 NullMessageSerializer,
-                                 StringMessageSerializer,
-                                 JsonMessageSerializer)
+from obci2.core.messages import (Message)
 
 
 class QueryTestBroker(Broker):

@@ -1,18 +1,17 @@
-
-import time
 import asyncio
+import time
 
 import zmq
 
 
 def bind_to_urls(socket, urls):
-    listening_urls = []
+    listening_urls = set()
     for url in urls:
         socket.bind(url)
         real_url = socket.getsockopt(zmq.LAST_ENDPOINT)
         if real_url:
-            listening_urls.append(real_url.decode())
-    return listening_urls
+            listening_urls.add(real_url.decode())
+    return list(listening_urls)
 
 
 class TimeoutException(Exception):

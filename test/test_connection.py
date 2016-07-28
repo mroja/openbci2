@@ -1,14 +1,12 @@
-
-import time
-import random
 import asyncio
+import random
+import time
 
-import zmq
 import pytest
-
-from obci2.core.peer import Peer, PeerInitUrls
+import zmq
 from obci2.core.broker import Broker
 from obci2.core.messages import Message, NullMessageSerializer
+from obci2.core.peer import Peer, PeerInitUrls
 
 
 class TestBroker(Broker):
@@ -96,16 +94,16 @@ def run_connection_test(broker_rep,
                         peer_pub,
                         peer_rep):
 
-    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub], 1)
+    broker = TestBroker([broker_rep], [broker_xpub], [broker_xsub])
 
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
-    peer = TestPeer(1, urls)
+    #peer = TestPeer(1, urls)
 
     while True:
-        if peer.init_finished and len(broker._peers.keys()) == 2:
-            break
+        #if peer.init_finished and len(broker._peers.keys()) == 2:
+        #    break
         time.sleep(0.05)
 
     peer.shutdown()

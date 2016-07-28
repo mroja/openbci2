@@ -1,19 +1,13 @@
-
-import time
 import asyncio
-import traceback
-import threading
-import logging
+import time
 from collections import namedtuple
 
 import zmq
 
-from ..utils.asyncio import Timeout
-from ..utils.zmq import bind_to_urls, recv_multipart_with_timeout
-from .messages import Message
 from .message_statistics import MsgPerfStats
+from .messages import Message
 from .zmq_asyncio_task_manager import ZmqAsyncioTaskManager
-
+from ..utils.zmq import bind_to_urls, recv_multipart_with_timeout
 
 PeerInitUrls = namedtuple('PeerInitUrls', ['pub_urls', 'rep_urls', 'broker_rep_url'])
 
@@ -90,9 +84,7 @@ class Peer(ZmqAsyncioTaskManager):
         self._calc_recv_stats = False
         self._recv_stats = MsgPerfStats(stats_interval, 'RECV')
 
-        self._create_sockets()
-
-        self.create_task(self._connect_to_broker_wrapper())
+        self.create_task(self._connect_to_broker())
 
     def set_filter(self, msg_filter):
         if self._sub is not None:
@@ -102,7 +94,7 @@ class Peer(ZmqAsyncioTaskManager):
         if self._sub is not None:
             self._sub.unsubscribe(msg_filter.encode('utf-8'))
 
-    def _cleanup():
+    def _cleanup(self):
         self._pub.close(linger=0)
         self._sub.close(linger=0)
         self._req.close(linger=0)
@@ -123,8 +115,9 @@ class Peer(ZmqAsyncioTaskManager):
                 socket.set_hwm(self._hwm)
                 socket.set(zmq.LINGER, 0)
             await self.__connect_to_broker_impl()
-        except Exception as ex:
-            self._logger.exception("initialization failed: {}: {}".format(self._id, type(ex), ex))
+        except Exception:
+            self._logger.exception("initialization failed for peer '{}': ".format(self._id))
+            raise
         else:
             self._loop.create_task(self.heartbeat())
             self._loop.create_task(self.initialization_finished())
@@ -215,8 +208,6 @@ class Peer(ZmqAsyncioTaskManager):
             if sleep_duration < 0:
                 sleep_duration = 0
             await asyncio.sleep(sleep_duration)
-            if not self._running:
-                break
 
     async def send_broker_message(self, msg):
         if self._log_messages:
@@ -296,7 +287,8 @@ class Peer(ZmqAsyncioTaskManager):
             await self.handle_async_message(msg)
         await self.__receive_messages_helper(self._sub, async_handler)
 
-    async def __receive_messages_helper(self, socket, handler):
+    @staticmethod
+    async def __receive_messages_helper(socket, handler):
         """
         Two concurrent polling loops are run (for SUB and REP) to avoid one message type processing blocking another.
         """
@@ -304,7 +296,5 @@ class Peer(ZmqAsyncioTaskManager):
         poller.register(socket, zmq.POLLIN)
         while True:
             events = await poller.poll(timeout=100)  # timeout in milliseconds
-            if len(events) == 0 and not self._running:
-                break
             if socket in dict(events):
                 await handler()

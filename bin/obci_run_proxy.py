@@ -10,10 +10,10 @@
 # the License, or (at your option) any later version.
 #
 
+import importlib
 import os
 import os.path
 import sys
-import importlib
 import traceback
 
 

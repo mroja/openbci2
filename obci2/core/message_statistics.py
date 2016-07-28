@@ -8,6 +8,7 @@ class MsgPerfStats:
         self._name = name
         self._interval = interval
         self._calc_size = False
+        self.reset()
 
     def reset(self):
         self._last_time = time.time()

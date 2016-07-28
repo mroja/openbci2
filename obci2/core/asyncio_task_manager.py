@@ -1,9 +1,8 @@
 
 import asyncio
 import logging
-import functools
 import threading
-from concurrent.futures import Future
+
 
 class AsyncioTaskManager:
     @staticmethod
@@ -14,7 +13,7 @@ class AsyncioTaskManager:
     _logger_name = 'AsyncioTaskManager'
 
     def __init__(self, asyncio_loop=None):
-        assert asyncio_loop is None or isinstance(asyncio_loop, BaseEventLoop)
+        assert asyncio_loop is None or isinstance(asyncio_loop, asyncio.BaseEventLoop)
         self._logger = logging.getLogger(self._logger_name)
         self._tasks = []
         self._shutdown_lock = threading.Lock()
@@ -66,6 +65,7 @@ class AsyncioTaskManager:
                 await fut
             except asyncio.CancelledError:
                 self._logger.warn('Coroutine cancelled: {}, {}'.format(fut, coro))
+                raise
             except Exception:
                 self._logger.exception('Exception in coroutine: {}, {}'.format(fut, coro))
                 raise
@@ -134,6 +134,7 @@ class AsyncioTaskManager:
             self._loop.run_forever()
         except Exception:
             self._logger.exception('Exception in asyncio event loop:')
+            raise
         finally:
             self._create_task_enabled = False
             self._logger.debug('Message loop stopped. Cancelling all pending tasks.')
@@ -143,13 +144,16 @@ class AsyncioTaskManager:
                 try:
                     self._loop.run_until_complete(tasks)
                 except asyncio.CancelledError:
-                    self._logger.info('cancelled: {}'.format(tasks), exc_info=True)
+                    # self._logger.info('cancelled: {}'.format(tasks), exc_info=True)
+                    pass
                 except Exception:
                     self._logger.exception('Exception during message loop shutdown phase:')
+                    raise
                 finally:
                     self._loop.close()
             except Exception:
                 self._logger.exception('Unknown exception during message loop shutdown phase:')
+                raise
             finally:
                 self._cleanup()
                 self._logger.debug('All cleanup tasks finished. Event loop thread will end now.')
