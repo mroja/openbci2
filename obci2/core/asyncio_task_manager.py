@@ -80,10 +80,6 @@ class AsyncioTaskManager:
         self._tasks.append(future)
         return future
 
-    #def cancel_task(self, task):
-    #    """ Can be called from any thread. """
-    #    self._loop.call_soon_threadsafe(task.cancel)
-
     def shutdown(self):
         """
         This function can be called from ANY thread.

@@ -1,14 +1,18 @@
+#!/usr/bin/env python3
+
 import asyncio
 import logging
 import threading
 import time
 
 import pytest
+
 from obci2.core.zmq_asyncio_task_manager import ZmqAsyncioTaskManager
 
+
 WAIT_FOR_TASKS_DELAY = 0.5  # seconds
-UNDER_TIMEOUT_DELAY = 0.1
-OVER_TIMEOUT_DELAY = 10.0
+UNDER_TIMEOUT_DELAY = 0.1  # seconds
+OVER_TIMEOUT_DELAY = 10.0  # seconds
 
 
 class ZmqAsyncioTaskManagerWithName(ZmqAsyncioTaskManager):
@@ -51,7 +55,6 @@ def context_mgr_helper(iterations, force_shutdown_times):
             future2 = mgr.create_task(task2())
             future3 = mgr.create_task(task3())
             time.sleep(WAIT_FOR_TASKS_DELAY)
-            # print('xoxox: {}'.format(future1.result()))
             for _ in range(force_shutdown_times):
                 mgr.shutdown()
                 assert len(mgr._tasks) == 0
@@ -76,7 +79,7 @@ def test_context_manager():
 def shutdown_helper(force_shutdown_times):
     global WAIT_FOR_TASKS_DELAY
 
-    mgr = ZmqAsyncioTaskManagerWithName(thread_name='Mgr_0')
+    mgr = ZmqAsyncioTaskManagerWithName(thread_name='Mgr_X')
     future1 = mgr.create_task(task1())
     future2 = mgr.create_task(task2())
     future3 = mgr.create_task(task3())

@@ -28,9 +28,11 @@ class ZmqAsyncioTaskManager(AsyncioTaskManager):
         return self._owns_ctx
 
     def _cleanup(self):
+        """
+        If this class owns ZMQ context remember to close all
+        sockets before calling this function through `super()._cleanup()`.
+        """
         if self._owns_ctx:
-            # destroy requires there are no active sockets in other threads
-            # TODO: is this condition true?
             self._ctx.destroy(linger=0)
             self._ctx = None
         super()._cleanup()

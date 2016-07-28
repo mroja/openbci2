@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+
 import asyncio
 import random
 import time
+import logging
 
 import pytest
 import zmq
+
 from obci2.core.broker import Broker
 from obci2.core.messages import Message, NullMessageSerializer
 from obci2.core.peer import Peer, PeerInitUrls
@@ -99,11 +103,11 @@ def run_connection_test(broker_rep,
     urls = PeerInitUrls(pub_urls=[peer_pub],
                         rep_urls=[peer_rep],
                         broker_rep_url=broker_rep)
-    #peer = TestPeer(1, urls)
+    peer = TestPeer(1, urls)
 
     while True:
-        #if peer.init_finished and len(broker._peers.keys()) == 2:
-        #    break
+        if peer.init_finished and len(broker._peers.keys()) == 2:
+            break
         time.sleep(0.05)
 
     peer.shutdown()
@@ -285,6 +289,10 @@ def test_connection_4():
     print('test_4 finished')
 
 if __name__ == '__main__':
+    logging.root.setLevel(logging.DEBUG)
+    console = logging.StreamHandler()
+    logging.root.addHandler(console)
+
     test_connection_1()
     test_connection_2()
     test_connection_3()

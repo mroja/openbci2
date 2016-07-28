@@ -89,11 +89,13 @@ class MsgProxy:
                     events = dict(poller.poll(1000))
                     if self._xpub in events:
                         message = self._xpub.recv_multipart()
-                        self._logger.debug("[BROKER_PROXY] subscription message: {}".format(message))
+                        if self._logger.isEnabledFor(logging.DEBUG):
+                            self._logger.debug("[BROKER_PROXY] subscription message: {}".format(message))
                         self._xsub.send_multipart(message)
                     if self._xsub in events:
                         message = self._xsub.recv_multipart()
-                        self._logger.debug("[BROKER_PROXY] publishing message: {}".format(message))
+                        if self._logger.isEnabledFor(logging.DEBUG):
+                            self._logger.debug("[BROKER_PROXY] publishing message: {}".format(message))
                         self._xpub.send_multipart(message)
             else:
                 zmq.proxy(self._xsub, self._xpub)

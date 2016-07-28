@@ -4,9 +4,9 @@ Work in progress.
 
 Requires Python 3.5.1+.
 
-To develop locally run "pip3 install -e ." inside "openbci2" repository.
+To develop locally run `pip3 install -e .` inside `openbci2` repository.
 
-To start tests run "python3 setup.py test --addopt -s" inside "openbci2" repository.
+To start tests run `python3 setup.py test --addopt -s` inside `openbci2` repository.
 
 # Requirements
 

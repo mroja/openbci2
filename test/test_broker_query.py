@@ -1,4 +1,6 @@
-from obci2.core.messages import (Message)
+#!/usr/bin/env python3
+
+from obci2.core.messages import Message
 
 
 class QueryTestBroker(Broker):
