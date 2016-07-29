@@ -44,6 +44,15 @@ class AsyncioTaskManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
 
+    async def __aenter__(self):
+        assert self._loop is not None
+        assert asyncio.get_event_loop() == self._loop
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self._create_task_enabled = False
+        await self.__cancel_all_tasks()
+
     @property
     def owns_asyncio_loop(self):
         return self._owns_loop

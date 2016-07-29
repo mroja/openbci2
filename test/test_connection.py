@@ -291,7 +291,6 @@ def test_connection_4():
     while True:
         all_ready = True
         for peer in all_peers:
-            #print(peer.init_finished)
             if not peer.init_finished:
                 all_ready = False
                 break
