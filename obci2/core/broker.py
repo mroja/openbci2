@@ -44,19 +44,19 @@ class MsgProxy:
         self._thread.join()
 
     def _run(self):
-        self._xpub = self._ctx.socket(zmq.XPUB)
-        self._xsub = self._ctx.socket(zmq.XSUB)
+        xpub = self._ctx.socket(zmq.XPUB)
+        xsub = self._ctx.socket(zmq.XSUB)
 
-        self._xpub.set_hwm(self._hwm)
-        self._xsub.set_hwm(self._hwm)
+        xpub.set_hwm(self._hwm)
+        xsub.set_hwm(self._hwm)
 
-        self._xpub.set(zmq.LINGER, 0)
-        self._xsub.set(zmq.LINGER, 0)
+        xpub.set(zmq.LINGER, 0)
+        xsub.set(zmq.LINGER, 0)
 
-        # self._xpub.set(zmq.XPUB_VERBOSE, 1)
+        # xpub.set(zmq.XPUB_VERBOSE, 1)
 
-        self._xpub_listening_urls = bind_to_urls(self._xpub, self._xpub_urls)
-        self._xsub_listening_urls = bind_to_urls(self._xsub, self._xsub_urls)
+        self._xpub_listening_urls = bind_to_urls(xpub, self._xpub_urls)
+        self._xsub_listening_urls = bind_to_urls(xsub, self._xsub_urls)
 
         self._logger.info("\nMsgProxy: XPUB: {}\nMsgProxy: XSUB: {}\n"
                           .format(', '.join(self._xpub_listening_urls),
@@ -65,27 +65,25 @@ class MsgProxy:
         try:
             if self._debug:
                 poller = zmq.Poller()
-                poller.register(self._xpub, zmq.POLLIN)
-                poller.register(self._xsub, zmq.POLLIN)
+                poller.register(xpub, zmq.POLLIN)
+                poller.register(xsub, zmq.POLLIN)
                 while True:
                     events = dict(poller.poll(1000))
-                    if self._xpub in events:
-                        message = self._xpub.recv_multipart()
+                    if xpub in events:
+                        message = xpub.recv_multipart()
                         if self._logger.isEnabledFor(logging.DEBUG):
                             self._logger.debug("[BROKER_PROXY] subscription message: {}".format(message))
-                        self._xsub.send_multipart(message)
-                    if self._xsub in events:
-                        message = self._xsub.recv_multipart()
+                        xsub.send_multipart(message)
+                    if xsub in events:
+                        message = xsub.recv_multipart()
                         if self._logger.isEnabledFor(logging.DEBUG):
                             self._logger.debug("[BROKER_PROXY] publishing message: {}".format(message))
-                        self._xpub.send_multipart(message)
+                        xpub.send_multipart(message)
             else:
-                zmq.proxy(self._xsub, self._xpub)
+                zmq.proxy(xsub, xpub)
         except zmq.ContextTerminated:
-            self._xsub.close(linger=0)
-            self._xsub = None
-            self._xpub.close(linger=0)
-            self._xpub = None
+            xsub.close(linger=0)
+            xpub.close(linger=0)
 
 
 class BrokerPeer(Peer):

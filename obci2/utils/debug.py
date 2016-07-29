@@ -7,9 +7,9 @@ import traceback
 def print_threads(title=None):
     postfix = '' if title is None else ' - ' + title
     print('Print threads begin{}'.format(postfix))
-    for th in threading.enumerate():
-        print(th)
-        traceback.print_stack(sys._current_frames()[th.ident])
+    for thread in threading.enumerate():
+        print(thread)
+        traceback.print_stack(sys._current_frames()[thread.ident])
         print('')
     print('Print threads end{}'.format(postfix))
 

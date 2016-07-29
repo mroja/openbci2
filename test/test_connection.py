@@ -311,15 +311,15 @@ def test_connection_4():
     broker.shutdown()
 
     for peer in peers_senders:
-        assert(peer.sent_messages_count == 1)
+        assert peer.sent_messages_count == 1
 
     for peer in peers_receive_A:
         # print(peer.received_messages_count)
-        assert(peer.received_messages_count == A_msgs_count)
+        assert peer.received_messages_count == A_msgs_count
 
     for peer in peers_receive_B:
         # print(peer.received_messages_count)
-        assert(peer.received_messages_count == B_msgs_count)
+        assert peer.received_messages_count == B_msgs_count
 
     print('test_4 finished')
 
