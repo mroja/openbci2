@@ -324,7 +324,7 @@ def test_connection_4():
     print('test_4 finished')
 
 if __name__ == '__main__':
-    #logging.root.setLevel(logging.DEBUG)
+    # logging.root.setLevel(logging.DEBUG)
     logging.root.setLevel(logging.INFO)
     console = logging.StreamHandler()
     logging.root.addHandler(console)

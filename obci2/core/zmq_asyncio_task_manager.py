@@ -5,6 +5,7 @@ from .asyncio_task_manager import AsyncioTaskManager
 
 
 class ZmqAsyncioTaskManager(AsyncioTaskManager):
+
     @staticmethod
     def new_event_loop():
         return zmq.asyncio.ZMQEventLoop()

@@ -101,7 +101,7 @@ def run_test(broker_rep,
         if (query_peer.init_finished and
             answer_peer.init_finished and
             looper_peer.init_finished and
-            len(broker._peers.keys()) == 4):
+                len(broker._peers.keys()) == 4):
             break
         time.sleep(0.05)
 

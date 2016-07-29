@@ -16,6 +16,7 @@ OVER_TIMEOUT_DELAY = 10.0  # seconds
 
 
 class ZmqAsyncioTaskManagerWithName(ZmqAsyncioTaskManager):
+
     def __init__(self, *args, thread_name, **kwargs):
         self._thread_name = thread_name
         super().__init__(*args, **kwargs)

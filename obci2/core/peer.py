@@ -247,7 +247,7 @@ class Peer(ZmqAsyncioTaskManager):
         await self._pub.send_multipart(serialized_msg)
 
     async def query(self, query_type, query_params={}):
-        query_msg = Message('BROKER_QUERY', self._id, { 'type': query_type, 'params': query_params })
+        query_msg = Message('BROKER_QUERY', self._id, {'type': query_type, 'params': query_params})
         broker_response = await self.send_broker_message(query_msg)
         if broker_response.data['type'] == 'response':
             return broker_response.data['data']

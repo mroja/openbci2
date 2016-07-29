@@ -5,6 +5,7 @@ import threading
 
 
 class AsyncioTaskManager:
+
     @staticmethod
     def new_event_loop():
         return asyncio.new_event_loop()

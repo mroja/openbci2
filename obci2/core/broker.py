@@ -44,7 +44,6 @@ class MsgProxy:
         self._thread.join()
 
     def _run(self):
-
         self._xpub = self._ctx.socket(zmq.XPUB)
         self._xsub = self._ctx.socket(zmq.XSUB)
 
@@ -54,7 +53,7 @@ class MsgProxy:
         self._xpub.set(zmq.LINGER, 0)
         self._xsub.set(zmq.LINGER, 0)
 
-        #self._xpub.set(zmq.XPUB_VERBOSE, 1)
+        # self._xpub.set(zmq.XPUB_VERBOSE, 1)
 
         self._xpub_listening_urls = bind_to_urls(self._xpub, self._xpub_urls)
         self._xsub_listening_urls = bind_to_urls(self._xsub, self._xsub_urls)

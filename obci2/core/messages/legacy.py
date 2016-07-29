@@ -15,7 +15,8 @@ _LEGACY_MSG_TYPES_LIST = [
     }, {
         'type': 4,
         'name': "HEARTBIT",
-        'comment': "packet to be sent by every peer on every channel when nothing sent through the given channel for certain period of time"
+        'comment': "packet to be sent by every peer on every channel when nothing sent through the given "
+                   "channel for certain period of time"
     }, {
         'type': 5,
         'name': "DELIVERY_ERROR",
@@ -40,11 +41,13 @@ _LEGACY_MSG_TYPES_LIST = [
     }, {
         'type': 113,
         'name': "REQUEST_RECEIVED",
-        'comment': "packet sent by the backend immediatelly after receiving a request and stright to the requesting peer"
+        'comment': "packet sent by the backend immediatelly after receiving a request and stright to the "
+                   "requesting peer"
     }, {
         'type': 114,
         'name': "BACKEND_ERROR",
-        'comment': "packet sent by the backend when request handling function finishes and no packet response packet is sent"
+        'comment': "packet sent by the backend when request handling function finishes and no packet response "
+                   "packet is sent"
     }, {
         'type': 115,
         'name': "LOGS_STREAM",
@@ -177,7 +180,7 @@ _LEGACY_MSG_TYPES_LIST = [
         'name': "UGM_CONTROL_MESSAGE"
     },
 
-    ################# CONFIGURATION MESSAGES ############################
+    # CONFIGURATION MESSAGES
     {
         # TODO get rid of this type
         'type': 213,
@@ -254,7 +257,7 @@ _LEGACY_MSG_TYPES_LIST = [
         'name': "ETR_CALIBRATION_RESULTS"
     },
 
-    ######### OBCI_LOGGING #######################
+    # OBCI_LOGGING
     {
         'type': 234,
         'name': "OBCI_LOG_MESSAGE"
